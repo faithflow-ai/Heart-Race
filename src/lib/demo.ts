@@ -153,6 +153,15 @@ export async function createDemoGame(instructor: User): Promise<GameRow> {
     }
     await processCurrentRound((await getGame(g.id))!);
   }
+  // Two teams have marked themselves ready for the open round, so the class screen shows both states.
+  for (const f of firms.slice(0, 2)) {
+    const row = await one<{ data: unknown }>("select data from decisions where firm_id = $1 and round = 3", [f.id]);
+    if (row) {
+      const d = normalizeDecision(typeof row.data === "string" ? JSON.parse(row.data) : (row.data as FirmDecision));
+      d.ready = true;
+      await q("update decisions set data = $1 where firm_id = $2 and round = 3", [JSON.stringify(d), f.id]);
+    }
+  }
   // Leave the demo paused: nothing processes until the instructor clicks Run or Start.
   await q("update games set status = 'setup', deadline = null where id = $1", [g.id]);
   return (await getGame(g.id))!;

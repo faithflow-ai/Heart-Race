@@ -131,6 +131,7 @@ export function carryForward(d: FirmDecision): FirmDecision {
   n.research = [];
   n.capacityExpansion = 0;
   n.reflection = "";
+  n.ready = false;
   for (const p of n.products) p.commission = false;
   return n;
 }

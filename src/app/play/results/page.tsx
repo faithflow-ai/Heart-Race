@@ -43,6 +43,7 @@ function Results() {
           ))}
         </div>
       </div>
+      <p className="small muted">See what your team decided in this round: <a href={`/play/history?round=${round}`}>Past decisions, {ROUNDS.names[round]}</a></p>
       {err && <div className="notice bad">{err}</div>}
       {!data && !err && <p className="muted">Loading…</p>}
       {data && <ReportView round={round} report={data.report} score={data.score} leaderboard={data.leaderboard} names={names} />}

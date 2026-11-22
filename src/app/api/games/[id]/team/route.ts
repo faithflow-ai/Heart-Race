@@ -13,5 +13,6 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
   const round = Number(sp.get("round") ?? g.current_round);
   const res = round < g.current_round ? await getResult(g.id, round) : null;
   const decision = res ? res.decisions[firm.id] : firm.is_ai ? null : (await getDecision(firm.id, round)).data;
-  return { firm, round, decision, report: res?.reports[firm.id] ?? null, score: res?.scores[firm.id] ?? null };
+  const accepted = res ? Object.fromEntries(Object.values(res.state.firms[firm.id]?.products ?? {}).map((p) => [p.spec.id, { briefedRound: p.briefedRound, launchRound: p.launchRound }])) : {};
+  return { firm, round, decision, accepted, report: res?.reports[firm.id] ?? null, score: res?.scores[firm.id] ?? null };
 });

@@ -18,6 +18,8 @@ export const GET = handle(async (_req: Request, ctx: Ctx) => {
     [g.current_round, g.id],
   );
   const rounds = await processedRounds(g.id);
+  const readyRows = await q<{ firm_id: string; data: unknown }>("select firm_id, data from decisions where round = $1 and firm_id in (select id from firms where game_id = $2)", [g.current_round, g.id]);
+  const ready = new Set(readyRows.filter((r) => (typeof r.data === "string" ? JSON.parse(r.data) : (r.data as { ready?: boolean }))?.ready).map((r) => r.firm_id));
   const latest = rounds.length ? await getResult(g.id, rounds[rounds.length - 1].round) : null;
   const flagged = latest
     ? firms.flatMap((f) => (latest.reports[f.id]?.concerns ?? []).filter((c) => c.title.startsWith("Ad claims")).map((c) => ({ firm: f.name, ...c })))
@@ -31,6 +33,7 @@ export const GET = handle(async (_req: Request, ctx: Ctx) => {
       members: members.filter((m) => m.firm_id === f.id),
       edits: status.find((s) => s.firm_id === f.id)?.edits ?? 0,
       lastEdit: status.find((s) => s.firm_id === f.id)?.last ?? null,
+      ready: ready.has(f.id),
       lastScore: latest?.scores[f.id] ?? null,
     })),
     rounds,

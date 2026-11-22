@@ -97,6 +97,7 @@ export function describeChange(path: string, oldV: unknown, newV: unknown, names
     return fromTo(GOAL_LABELS[a] ?? a, numText(oldV, kind), numText(newV, kind));
   }
   if (head === "research") return `bought the study "${STUDIES[String(newV) as keyof typeof STUDIES]?.name ?? newV}"`;
+  if (head === "ready") return newV ? "marked the team ready for this round" : "marked the team not ready";
   if (head === "reflection") return oldV ? `edited the round reflection: ${text(newV)}` : `wrote the round reflection: ${text(newV)}`;
   if (head === "capacityExpansion") return fromTo("capacity to add", numText(oldV, "units"), numText(newV, "units"));
   if (head === "mediaMix" && a) return fromTo(`the ${MED[a] ?? a} share of promotion`, numText(oldV, "pct"), numText(newV, "pct"));

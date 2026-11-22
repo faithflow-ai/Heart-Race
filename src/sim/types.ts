@@ -87,6 +87,8 @@ export interface FirmDecision {
   capacityExpansion: number;
   /** Round reflection (written, graded by the instructor). */
   reflection: string;
+  /** The team says it's done for this round (doesn't lock anything; shown to the instructor). */
+  ready: boolean;
 }
 
 export interface FirmMeta {
