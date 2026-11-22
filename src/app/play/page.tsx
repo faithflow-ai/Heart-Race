@@ -43,8 +43,17 @@ export default function TeamHome() {
         </div>
         <div className="stat">
           <div className="k">Marketing budget left</div>
-          <div className="v">{money(t.budget.remaining, true)}</div>
-          <div className="s">of {money(t.budget.available, true)} available this round</div>
+          {t.game.round === 0 ? (
+            <>
+              <div className="v" style={{ fontSize: 16 }}>Starts in Round 1</div>
+              <div className="s">{money(500_000, true)} arrives in Round 1. The market survey is free now.</div>
+            </>
+          ) : (
+            <>
+              <div className="v">{money(t.budget.remaining, true)}</div>
+              <div className="s">of {money(t.budget.available, true)} available this round</div>
+            </>
+          )}
         </div>
         <div className="stat">
           <div className="k">Company capital</div>
@@ -63,7 +72,7 @@ export default function TeamHome() {
           <h2 style={{ marginTop: 0 }}>This round: {focus.title}</h2>
           <p>{focus.text}</p>
           <p>
-            <a className="btn primary" href="/play/decide">Go to decisions</a>
+            <a className="btn primary" href="/play/decide">Start this round&apos;s decisions here →</a>
           </p>
           <p className="small muted">Changes save automatically. Whatever is saved at the deadline is submitted. If you change nothing, last round's decisions carry forward.</p>
         </div>
@@ -95,7 +104,7 @@ export default function TeamHome() {
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>Your team</h2>
         <p>{t.members.map((m) => m.name).join(", ")}</p>
-        <p className="small muted">No fixed roles: organize yourselves. Write your team norms on the Strategy screen.</p>
+        <p className="small muted">No fixed roles: organize yourselves. Write your team charter on the Strategy & goals screen.</p>
       </div>
     </>
   );

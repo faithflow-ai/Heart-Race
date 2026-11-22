@@ -189,7 +189,7 @@ export async function applyOps(g: GameRow, firmId: string, round: number, user: 
       const prod = data.products.find((x) => x.id === segs[1].slice(1));
       const field = segs[2] ?? "";
       if (prod && field === "commission" && op.value === true && !prod.briefSent) throw new HttpError(400, "Send the brief to engineering and get a quote before accepting it.");
-      if (prod && prod.briefSent && DESIGN_FIELDS.has(field)) throw new HttpError(400, "This brief is with engineering. Click \"Revise brief\" to change it.");
+      if (prod && (prod.briefSent || prod.commission) && DESIGN_FIELDS.has(field)) throw new HttpError(400, "This brief is with engineering. Click \"Revise brief\" to change it.");
     }
     const { parent, key } = walk(data, segs);
     const p = parent as Record<string | number, unknown>;

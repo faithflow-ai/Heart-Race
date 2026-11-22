@@ -33,7 +33,7 @@ const TABS = [
   { id: "markets", label: "Markets & channels", unlock: UNLOCKS.markets },
   { id: "pricing", label: "Price & promotion", unlock: UNLOCKS.pricing },
   { id: "production", label: "Forecast & production", unlock: UNLOCKS.production },
-  { id: "review", label: "Review & submit", unlock: 0 },
+  { id: "review", label: "Review & checklist", unlock: 0 },
 ];
 
 // Region channels (public): mirrors the hidden region settings' channel lists.
@@ -106,24 +106,24 @@ function Decide() {
         {TABS.map((x) => (
           <a key={x.id} href={`/play/decide?tab=${x.id}`} className={`${x.id === current.id ? "active" : ""} ${round < x.unlock ? "locked" : ""}`}>
             {x.label}
-            {round < x.unlock ? " 🔒" : ""}
+            {round < x.unlock ? ` 🔒 Opens in ${ROUNDS.names[x.unlock]}` : ""}
           </a>
         ))}
       </div>
       {round < current.unlock ? (
         <div className="panel">
-          <p>This screen opens in {ROUNDS.names[current.unlock]}.</p>
+          <p>🔒 <b>This screen opens in {ROUNDS.names[current.unlock]}.</b> You can read what it covers below and plan ahead.</p>
           <Learn id={current.id} />
         </div>
       ) : (
-        <>
+        <fieldset className="plain" disabled={t.viewAs}>
           {current.id === "strategy" && <Strategy />}
           {current.id === "products" && <Products />}
           {current.id === "markets" && <Markets />}
           {current.id === "pricing" && <Pricing />}
           {current.id === "production" && <Production />}
           {current.id === "review" && <Review />}
-        </>
+        </fieldset>
       )}
     </>
   );
@@ -142,7 +142,8 @@ function Strategy() {
         <label>Company name</label>
         <input type="text" value={s.companyName} onChange={(e) => set("strategy.companyName", e.target.value)} placeholder={t.firm.name} />
         <label>Mission</label>
-        <textarea value={s.mission} onChange={(e) => set("strategy.mission", e.target.value)} />
+        <p className="small muted" style={{ marginTop: 0 }}>Why your company exists, in one or two sentences. Ask: Who do we serve? What need do we meet? What do we offer that others don&apos;t? What do we stand for?</p>
+        <textarea value={s.mission} onChange={(e) => set("strategy.mission", e.target.value)} placeholder="We help [customers] [achieve / solve ___] by [offering ___], unlike [alternatives]." />
         <label>Positioning statement</label>
         <textarea value={s.positioning} onChange={(e) => set("strategy.positioning", e.target.value)} placeholder="For [target], [brand] is the [category] that [key benefit] because [reason to believe]." />
         <label>Competitive posture</label>
@@ -153,12 +154,27 @@ function Strategy() {
           <option value="niche">Focus on a niche</option>
           <option value="follow">Fast follower</option>
         </select>
-        <label>Team norms (how you'll work together)</label>
-        <textarea value={s.norms} onChange={(e) => set("strategy.norms", e.target.value)} />
+        <label>Team charter (how you&apos;ll work together)</label>
+        <details className="small" style={{ marginBottom: 6 }}>
+          <summary>Answer these 8 questions</summary>
+          <ol style={{ margin: "6px 0", paddingLeft: 20 }}>
+            <li>Roles: who owns which decision area?</li>
+            <li>How and how fast do we communicate?</li>
+            <li>When do we meet?</li>
+            <li>How do we decide (consensus or vote), and who finalizes before the deadline?</li>
+            <li>How do we split the work?</li>
+            <li>What happens if a member isn&apos;t doing their share? (For example: direct reminder, then team discussion, then tell the instructor; it also shows in peer evaluation.)</li>
+            <li>How do we resolve disagreements?</li>
+            <li>Do all members agree to this charter?</li>
+          </ol>
+          <p className="muted" style={{ margin: 0 }}>The change log records who did what, and peer evaluation will refer back to this charter.</p>
+        </details>
+        <textarea value={s.norms} onChange={(e) => set("strategy.norms", e.target.value)} style={{ minHeight: 120 }} placeholder={"1) Roles: \n2) Communication: \n3) Meetings: \n4) Decisions: \n5) Splitting work: \n6) If someone isn't doing their share: \n7) Disagreements: \n8) We all agree: "} />
       </div>
       <div>
         <div className="panel">
-          <h3 style={{ marginTop: 0 }}>Target segments</h3>
+          <p className="small notice info" style={{ marginTop: 0 }}>Pick your target segments and regions in Practice; you can change them until the Round 1 deadline (and later too).</p>
+          <h3>Target segments</h3>
           <p className="small muted">Your Market and Customer scores count only these segments.</p>
           {SEGMENTS.map((x) => (
             <label className="inline" key={x.id} style={{ display: "flex" }}>
@@ -222,6 +238,10 @@ function Products() {
   return (
     <>
       <Learn id="products" />
+      <div className="notice info">
+        Brief up to {PRODUCT_RULES.maxProductsAtLaunch} products now. A third product can be briefed by {ROUNDS.names[PRODUCT_RULES.thirdProductBriefRound]} to launch in {ROUNDS.names[PRODUCT_RULES.thirdProductBriefRound + 1]}.
+        Each brief goes through three steps: <b>Draft</b> → <b>Send brief to engineering</b> (you get a quote) → <b>Accept quote</b> (the design locks and the fee is charged at the deadline).
+      </div>
       {t.decision.products.map((p) => (
         <ProductCard key={p.id} p={p} committed={committed.get(p.id)} onRemove={() => remove("products", p.id)} />
       ))}
@@ -230,11 +250,11 @@ function Products() {
           className="primary"
           onClick={() => push("products", { ...newProduct(`p${Date.now().toString(36)}`, t.decision.products.length + 1) })}
         >
-          + New product brief
+          {t.decision.products.length ? "+ Add another product" : "+ Add a product"}
         </button>
       ) : (
         <p className="muted small">
-          You have {live.length} of {allowed} products allowed {round < PRODUCT_RULES.thirdProductBriefRound ? `now. A third product can be briefed from ${ROUNDS.names[PRODUCT_RULES.thirdProductBriefRound]}.` : "."}
+          You have {live.length} of {allowed} products allowed {round < PRODUCT_RULES.thirdProductBriefRound ? `now. A third product can be briefed from ${ROUNDS.names[PRODUCT_RULES.thirdProductBriefRound]}.` : "(the most a team can have)."}
         </p>
       )}
     </>
@@ -246,12 +266,16 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
   const t = team!;
   const round = t.game.round;
   const locked = !!committed;
+  const frozen = locked || p.briefSent || p.commission;
   const q = quote(p, round);
+  const assembly = q.lines[0].cost;
+  const parts = q.lines.slice(1).reduce((a, l) => a + l.cost, 0);
+  const listTotal = assembly + parts;
   const base = `products.#${p.id}`;
   const sel = (key: keyof typeof COMPONENTS) => (
     <div>
       <label>{COMPONENTS[key].label}</label>
-      <select disabled={locked} value={p[key] as string} onChange={(e) => set(`${base}.${key}`, e.target.value)}>
+      <select disabled={frozen} value={p[key] as string} onChange={(e) => set(`${base}.${key}`, e.target.value)}>
         {Object.entries(COMPONENTS[key].options).map(([k, v]) => (
           <option key={k} value={k}>
             {v.name} (${v.cost})
@@ -267,8 +291,11 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
         ? <span className="badge warn">In development: ready in {ROUNDS.names[committed.launchRound]}</span>
         : <span className="badge good">On the market</span>
     : p.commission
-      ? <span className="badge accent">Brief will be sent at the deadline</span>
-      : <span className="badge">Draft brief</span>;
+      ? <span className="badge accent">Quote accepted: design locks at the deadline</span>
+      : p.briefSent
+        ? <span className="badge warn">Quote received: review and accept</span>
+        : <span className="badge">Draft</span>;
+  const stage = committed ? 3 : p.commission ? 3 : p.briefSent ? 2 : 1;
   return (
     <div className="product-card">
       <div className="row">
@@ -276,8 +303,8 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
         {status}
         <span className="spacer" />
         {!locked && (
-          <button className="danger" onClick={onRemove}>
-            Delete draft
+          <button className="danger" onClick={() => window.confirm(`Delete ${p.name}? This removes the brief.`) && onRemove()}>
+            Delete
           </button>
         )}
         {locked && !committed!.retired && (
@@ -286,12 +313,19 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
           </label>
         )}
       </div>
+      {!committed && (
+        <div className="steps">
+          <span className={stage === 1 ? "on" : ""}>1. Draft</span> →
+          <span className={stage === 2 ? "on" : ""}>2. Quote received</span> →
+          <span className={stage === 3 ? "on" : ""}>3. Accepted (locked)</span>
+        </div>
+      )}
       <div className="grid2">
         <div>
           <div className="grid2">
             <div>
               <label>Tier</label>
-              <select disabled={locked} value={p.tier} onChange={(e) => set(`${base}.tier`, e.target.value)}>
+              <select disabled={frozen} value={p.tier} onChange={(e) => set(`${base}.tier`, e.target.value)}>
                 <option value="good">Good</option>
                 <option value="better">Better</option>
                 <option value="best">Best</option>
@@ -299,7 +333,7 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
             </div>
             <div>
               <label>Main target segment</label>
-              <select disabled={locked} value={p.targetSegment} onChange={(e) => set(`${base}.targetSegment`, e.target.value as SegmentId)}>
+              <select disabled={frozen} value={p.targetSegment} onChange={(e) => set(`${base}.targetSegment`, e.target.value as SegmentId)}>
                 {SEGMENTS.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -322,7 +356,7 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
             <label key={s} className="inline">
               <input
                 type="checkbox"
-                disabled={locked}
+                disabled={frozen}
                 checked={p.sensors.includes(s)}
                 onChange={() => set(`${base}.sensors`, p.sensors.includes(s) ? p.sensors.filter((x) => x !== s) : [...p.sensors, s])}
               />
@@ -332,19 +366,27 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
         </div>
         <div>
           <div className="panel" style={{ background: "#fafbfc" }}>
-            <h3 style={{ marginTop: 0 }}>Engineering quote</h3>
+            <h3 style={{ marginTop: 0 }}>{p.briefSent || locked ? "Engineering quote" : "Cost estimate (updates as you edit)"}</h3>
+            {locked ? (
+              <div className="kv">
+                <div><b>Unit cost now</b> <span className="muted small">(after volume savings)</span></div><div><b>${committed!.unitCost.toFixed(2)}</b></div>
+                <div>Parts at today&apos;s prices</div><div>${parts.toFixed(2)}</div>
+                <div>Assembly, packaging, app</div><div>${assembly.toFixed(2)}</div>
+              </div>
+            ) : (
             <div className="kv">
-              <div>Unit cost</div>
-              <div><b>${q.unitCost.toFixed(2)}</b></div>
-              <div>Development fee (one time)</div>
-              <div><b>{money(q.devFee)}</b></div>
-              <div>Lead time</div>
-              <div>{q.leadTime} round</div>
+              <div>Parts</div><div>${parts.toFixed(2)}</div>
+              <div>Assembly, packaging, app</div><div>+ ${assembly.toFixed(2)}</div>
+              {Math.abs(listTotal - q.unitCost) > 0.005 && (<><div>Industry price drop since Round 1</div><div>- ${(listTotal - q.unitCost).toFixed(2)}</div></>)}
+              <div><b>Unit cost</b></div><div><b>${q.unitCost.toFixed(2)}</b></div>
+              <div>Development fee (one time)</div><div><b>{money(q.devFee)}</b></div>
+              <div>Lead time</div><div>{q.leadTime} round</div>
             </div>
-            <details style={{ marginTop: 8 }}>
-              <summary className="small">Cost breakdown</summary>
+            )}
+            <details style={{ marginTop: 8 }} open={p.briefSent && !locked}>
+              <summary className="small">Parts, one by one</summary>
               <div className="kv small">
-                {q.lines.map((l, i) => (
+                {q.lines.slice(1).map((l, i) => (
                   <Fragment key={i}><div>{l.label}</div><div>${l.cost}</div></Fragment>
                 ))}
               </div>
@@ -352,13 +394,36 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
             {q.problems.map((x, i) => (
               <div key={i} className="notice bad">{x}</div>
             ))}
-            {!locked && (
-              <label className="inline" style={{ marginTop: 10 }}>
-                <input type="checkbox" checked={p.commission} disabled={q.problems.length > 0} onChange={(e) => set(`${base}.commission`, e.target.checked)} />
-                <b>Send this brief and accept the quote</b>
-              </label>
+            {!locked && !p.briefSent && (
+              <>
+                <p style={{ marginTop: 12 }}>
+                  <button className="primary" disabled={q.problems.length > 0} onClick={() => set(`${base}.briefSent`, true)}>Send brief to engineering</button>
+                </p>
+                <p className="small muted">Engineering returns a quote right away. Nothing is charged until you accept it.</p>
+              </>
             )}
-            {!locked && <p className="small muted">The fee is paid from company capital at the deadline. After that the design is locked.</p>}
+            {!locked && p.briefSent && !p.commission && (
+              <>
+                <div className="row" style={{ marginTop: 12 }}>
+                  <button
+                    className="primary"
+                    onClick={() => window.confirm(`Accept the quote for ${p.name}?\n\nThis locks the design and charges ${money(q.devFee)} from company capital at the deadline. The product goes on sale in ${ROUNDS.names[round + q.leadTime] ?? "the next round"}.`) && set(`${base}.commission`, true)}
+                  >
+                    Accept quote
+                  </button>
+                  <button onClick={() => set(`${base}.briefSent`, false)}>Revise brief</button>
+                </div>
+                <p className="small notice warn">Not accepted yet: if it stays this way at the deadline, this product won&apos;t be ready next round.</p>
+              </>
+            )}
+            {!locked && p.commission && (
+              <>
+                <p className="small" style={{ marginTop: 12 }}>
+                  Accepted. At the deadline the design locks and {money(q.devFee)} is charged from company capital. The product goes on sale in {ROUNDS.names[round + q.leadTime] ?? "the next round"}.
+                </p>
+                <button onClick={() => { set(`${base}.commission`, false); }}>Undo acceptance</button>
+              </>
+            )}
             {locked && <p className="small muted">Accepted. Components are locked; you can still rename it, change its app plan price and its ad claims.</p>}
           </div>
         </div>
@@ -609,6 +674,7 @@ function Review() {
   return (
     <>
       <Learn id="review" />
+      <Checklist />
       <div className="grid2">
         <div className="panel">
           <h3 style={{ marginTop: 0 }}>Budget check: marketing</h3>
@@ -675,12 +741,70 @@ function Review() {
         </div>
       )}
       <div className="panel">
-        <h3 style={{ marginTop: 0 }}>Round reflection</h3>
+        <h3 style={{ marginTop: 0 }} id="reflection">Round reflection</h3>
         <p className="small muted">What did you decide this round and why? What did last round teach you? Your instructor grades this.</p>
         <textarea value={d.reflection} onChange={(e) => set("reflection", e.target.value)} style={{ minHeight: 120 }} />
       </div>
-      <div className="notice info">There's no submit button: whatever is saved at the deadline is used. <SaveState /></div>
+      <div className="notice info">There&apos;s no submit button: whatever is saved at the deadline is used. <SaveState /></div>
     </>
+  );
+}
+
+function Checklist() {
+  const { team } = useTeam();
+  const t = team!;
+  const d = t.decision;
+  const round = t.game.round;
+  const committed = new Map(t.committed.map((c) => [c.id, c]));
+  const items: { text: string; tab: string }[] = [];
+  const add = (text: string, tab: string) => items.push({ text, tab });
+  if (!d.strategy.companyName.trim()) add("Company not named", "strategy");
+  if (!d.strategy.mission.trim()) add("Mission is blank", "strategy");
+  if (!d.strategy.norms.trim()) add("Team charter is blank", "strategy");
+  if (!d.strategy.targetSegments.length) add("No target segments chosen", "strategy");
+  if (!d.strategy.targetRegions.length) add("No target regions chosen", "strategy");
+  const drafts = d.products.filter((p) => !committed.has(p.id) && !p.retire);
+  if (!d.products.length && round < PRODUCT_RULES.thirdProductBriefRound + 1) add("No product briefs yet: products briefed this round are ready to sell next round", "products");
+  for (const p of drafts) {
+    if (!p.briefSent && !p.commission) add(`${p.name} is still a draft (not sent to engineering, so it won't be ready next round)`, "products");
+    else if (!p.commission) add(`${p.name} has a quote from engineering that hasn't been accepted (it won't be ready next round)`, "products");
+  }
+  if (round >= UNLOCKS.markets) {
+    const regions = activeRegions(t);
+    if (!regions.length) add("No region entered: you can't sell anywhere yet", "markets");
+    for (const r of regions) if (!d.regions[r.id].channels.length) add(`No channels chosen in ${r.name}`, "markets");
+    const prods = sellable(t);
+    for (const p of prods)
+      for (const r of regions) {
+        const pl = d.plan[p.id]?.[r.id];
+        if (!pl?.price) add(`No price for ${p.name} in ${r.name}`, "pricing");
+        if (!pl?.forecast) add(`No sales forecast for ${p.name} in ${r.name}`, "production");
+        if (!pl?.production && !(t.inventory[p.id]?.[r.id] ?? 0)) add(`No production planned for ${p.name} in ${r.name}`, "production");
+      }
+    if (prods.length && regions.length && !t.budget.promotion) add("No promotion planned", "pricing");
+    const mix = MEDIA.reduce((a, m) => a + (d.mediaMix[m.id] ?? 0), 0);
+    if (mix !== 100) add(`Promotion split across media adds up to ${mix}%, not 100%`, "pricing");
+    if (t.budget.remaining < 0) add("Marketing spending is over budget (it will be scaled down at the deadline)", "pricing");
+  }
+  if (round >= UNLOCKS.goals && Object.values(d.goals).some((v) => v === null)) add("Some numeric goals are blank", "strategy");
+  if (!d.reflection.trim()) add("Round reflection is empty", "review");
+  return (
+    <div className="panel">
+      <h3 style={{ marginTop: 0 }}>Checklist for {ROUNDS.names[round]}</h3>
+      {!items.length ? (
+        <div className="notice good">✓ Everything is filled in. You can keep editing until the deadline.</div>
+      ) : (
+        <ul className="checklist">
+          {items.map((x, i) => (
+            <li key={i}>
+              <span>⚠</span>
+              <span style={{ flex: 1 }}>{x.text}</span>
+              {x.tab === "review" ? <a href="#reflection">Write it below</a> : <a href={`/play/decide?tab=${x.tab}`}>Fix</a>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

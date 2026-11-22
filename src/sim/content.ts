@@ -1,8 +1,8 @@
 /** Words students read: round focus, Learn sections and the FAQ. Edit freely. */
 
 export const ROUND_FOCUS = [
-  { title: "Organize and research", text: "Name your company, agree on how your team works, read the free market survey and send your first product briefs to engineering. Products briefed now are ready to sell in Round 1. Nothing is scored this round." },
-  { title: "Launch", text: "Your first products reach the market. Pick target segments and regions, choose channels, set prices, split promotion and set production. Set numeric goals and a sales forecast: both count toward your goal-accuracy score." },
+  { title: "Organize and research", text: "Name your company, write your team charter, read the free market survey, pick your target segments and regions, and send your first product briefs to engineering. Products briefed now are ready to sell in Round 1. Nothing is scored this round." },
+  { title: "Launch", text: "Your first products reach the market. Confirm the target segments and regions you picked in Practice (you can change them until the Round 1 deadline), enter regions, choose channels, set prices, split promotion and set production. Set numeric goals and a sales forecast: both count toward your goal-accuracy score." },
   { title: "Go to market", text: "Read your Round 1 results. Adjust price, promotion and ad messages, and fix stockouts or excess inventory. Watch the marketing budget: this is the last fixed release." },
   { title: "Learn and adjust", text: "Head office releases the last $1M. Pace it through the final round. This is your last chance to brief a third product so it's ready in Round 4." },
   { title: "Expand", text: "Third products launch. Consider a second region, more channels and capacity. Engineering fees are now 50% higher." },
@@ -24,13 +24,13 @@ export const LEARN: Record<string, string> = {
     "Price against what each segment expects to pay. Above that, demand falls off fast for price-sensitive segments. Promotion builds awareness with diminishing returns, and part of it carries into the next round, so steady spending beats one splurge. Ad claims that match what a segment cares about lift sales, but claims the product can't back up are flagged and hurt satisfaction.",
   production:
     "Your forecast is what you expect to sell. Production is what you make. They don't have to match, but you pay for every unit made: unsold units cost 5% of unit cost per round to hold and are cleared at a loss after 2 rounds. Run short and buyers go to rivals. The factory has a capacity limit; overtime adds up to 20% at a higher cost, and new capacity takes a round to come online.",
-  review: "Check the budget and projected results before the deadline. Whatever is saved at the deadline is submitted automatically. Anything you leave unchanged carries forward from last round.",
+  review: "Come here before every deadline to double-check your team's decisions. The checklist below lists anything missing or unfinished, with a link to fix it. There's no submit button: whatever is saved at the deadline is used automatically, and anything you leave unchanged carries forward from last round.",
 };
 
 export const FAQ: { q: string; a: string }[] = [
   { q: "How do we submit?", a: "You don't need to. Every change saves automatically, and whatever stands at the deadline is used. Any teammate can edit anything until then; the change log shows who changed what." },
   { q: "What if we miss a deadline?", a: "Your decisions from last round carry forward as they are, and your results are flagged as carried forward." },
-  { q: "What is the practice round for?", a: "Getting organized: company name, team norms, the free market survey and your first product briefs. It isn't scored, but products briefed in the practice round are the ones you sell in Round 1." },
+  { q: "What is the practice round for?", a: "Getting organized: company name, team charter, the free market survey, target segments and regions, and your first product briefs. It isn't scored, but products briefed in the practice round are the ones you sell in Round 1." },
   { q: "How does the scorecard work?", a: "Five measures, each turned into 0 to 100 points against the best firm that round: Market 30% (share in your target segments, weighted by segment size), Customer 20% (product fit, awareness and satisfaction in those segments), Financial 20% (operating profit and return on promotion), Channel 20% (how many target buyers can find you, minus excess partner margin) and Goal accuracy 10% (how close you came to your own goals and sales forecast)." },
   { q: "Segments vs. tiers?", a: "Segments are groups of buyers (for example Older Adults & Caregivers). Tiers are your product line (Good, Better, Best). One tier can serve several segments, and one segment may buy more than one tier. Research tells you which fits." },
   { q: "Which research should we buy first?", a: "Customer needs tells you what to put in a product. Price willing to pay and Media and channel preferences tell you how to sell it. Competitor benchmark is most useful after Round 1." },

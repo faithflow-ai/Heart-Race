@@ -42,3 +42,17 @@ Open http://localhost:3000. Without `DATABASE_URL` it uses a built-in database s
 4. Deploy. Tables are created automatically on first use (`db/schema.sql`).
 
 Vercel's free plan runs the scheduled job once a day; rounds also process the moment anyone opens the app after the deadline.
+
+## Optional: "Forgot password" emails (Resend, free tier)
+
+Without this, students who forget their password ask the instructor, who resets it from the class screen. To let students reset it themselves:
+
+1. Create a free account at resend.com. Under **Domains**, add a domain you control and follow its DNS steps (or, for a quick test, use Resend's `onboarding@resend.dev` sender, which only delivers to your own email).
+2. Under **API Keys**, create a key.
+3. In Vercel → Settings → Environment Variables, add `RESEND_API_KEY` (the key) and `EMAIL_FROM` (for example `Heart Race <noreply@yourdomain.com>`), then redeploy.
+
+The sign-in page then shows a "Forgot your password?" link that emails a one-hour reset link.
+
+## Demo class
+
+On the instructor's class list, **Create demo class** builds a separate class labeled DEMO with 13 fake students on 4 teams, sample decisions and the Practice round, Round 1 and Round 2 already scored. Its class screen lists the fake logins (one shared password) and has a **Delete demo class** button that removes it and its fake accounts.

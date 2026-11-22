@@ -26,6 +26,16 @@ export default function ResearchPage() {
       setErr((e as Error).message);
     }
   }
+  async function preview(study: StudyId) {
+    setErr("");
+    try {
+      const res = await api(`/api/team/research?preview=${study}`);
+      setReport(res.report);
+      window.scrollTo({ top: 0 });
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
   async function open(r: number, study: string) {
     const res = await api(`/api/team/research?round=${r}&study=${study}`);
     setReport(res.report);
@@ -57,6 +67,7 @@ export default function ResearchPage() {
       <h1>Market research</h1>
       <p className="muted">Studies are paid from the marketing budget and delivered right away. Purchases can't be undone. Marketing budget left this round: <b>{money(left)}</b>.</p>
       {err && <div className="notice bad">{err}</div>}
+      {t.viewAs && <div className="notice warn">Instructor preview: click <b>Preview</b> to see any study as this team would get it right now. Nothing is bought or charged.</div>}
       <div className="panel">
         <table>
           <thead><tr><th>Study</th><th className="num">Cost</th><th></th></tr></thead>
@@ -66,7 +77,15 @@ export default function ResearchPage() {
                 <td>{STUDIES[s].name}</td>
                 <td className="num">{STUDIES[s].cost ? money(STUDIES[s].cost) : "Free"}</td>
                 <td className="num">
-                  {bought.has(s) ? <span className="badge good">Bought this round</span> : <button onClick={() => buy(s)} disabled={round > ROUNDS.final}>Buy</button>}
+                  {t.viewAs ? (
+                    <button onClick={() => preview(s)}>Preview</button>
+                  ) : bought.has(s) ? (
+                    <span className="badge good">{STUDIES[s].cost ? "Bought this round" : "Received"}</span>
+                  ) : round === 0 && STUDIES[s].cost > 0 ? (
+                    <span className="badge" title="Your marketing budget starts in Round 1">Available from Round 1</span>
+                  ) : (
+                    <button className={STUDIES[s].cost ? "" : "primary"} onClick={() => buy(s)} disabled={round > ROUNDS.final}>{STUDIES[s].cost ? "Buy" : "Get free survey"}</button>
+                  )}
                 </td>
               </tr>
             ))}

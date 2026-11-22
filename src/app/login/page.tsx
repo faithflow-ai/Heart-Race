@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/components/client";
 
 export default function LoginPage() {
@@ -9,6 +9,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetOn, setResetOn] = useState(false);
+  useEffect(() => {
+    api("/api/auth/forgot").then((r) => setResetOn(!!r.enabled)).catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,7 +58,7 @@ export default function LoginPage() {
             <button className="primary" disabled={busy}>
               {mode === "login" ? "Sign in" : "Create account"}
             </button>
-            {mode === "login" && <span className="small muted">Forgot your password? Ask your instructor to reset it.</span>}
+            {mode === "login" && (resetOn ? <a className="small" href="/forgot">Forgot your password?</a> : <span className="small muted">Forgot your password? Ask your instructor to reset it.</span>)}
           </div>
         </form>
       </div>

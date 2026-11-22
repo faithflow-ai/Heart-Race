@@ -183,7 +183,7 @@ async function sampleLog(firmId: string, round: number, members: User[], d: Firm
     lines.push({ path: "goals.revenue", old: null, new: d.goals.revenue });
   }
   if (d.reflection) lines.push({ path: "reflection", old: "", new: d.reflection });
-  let minutes = 60 * 24;
+  let minutes = 60 * 24 * (4 - round);
   for (let i = 0; i < lines.length; i++) {
     const who = members[i % members.length];
     minutes -= 37;
