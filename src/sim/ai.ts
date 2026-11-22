@@ -10,10 +10,8 @@ import {
   MARKETING_BUDGET,
   MEDIA,
   PRODUCTION,
-  REGION_PROFILES,
   ROUNDS,
   SEGMENTS,
-  SEGMENT_PROFILES,
   SENSORS,
   type AiStyle,
   type ChannelId,
@@ -21,9 +19,11 @@ import {
   type SegmentId,
   type SensorId,
 } from "./config";
+import { REGION_PROFILES, SEGMENT_PROFILES } from "./market";
 import { baseDemand, refPrice } from "./engine";
-import { emptyDecision, fit, newProduct, normalizeDecision, quote, regionIds, supportedClaims } from "./product";
+import { emptyDecision, newProduct, normalizeDecision, quote, regionIds, supportedClaims } from "./product";
 import { hashString, mulberry32 } from "./rng";
+import { fit } from "./fit";
 import type { FirmDecision, FirmMeta, GameState, ProductSpec, RoundResult, Tier } from "./types";
 
 const segIds = SEGMENTS.map((s) => s.id) as SegmentId[];

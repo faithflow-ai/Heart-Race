@@ -4,30 +4,26 @@
  * deterministic: the same inputs and seed always give the same results.
  */
 import {
-  AWARENESS,
   CHANNEL_TERMS,
   DEFAULT_SETTINGS,
-  DEMAND_MODEL,
   ENTRY_MODES,
   FINANCE,
   LEVERAGE,
   PRODUCTION,
   PRODUCT_RULES,
-  REGION_PROFILES,
   ROUNDS,
-  SATISFACTION,
   SEGMENTS,
-  SEGMENT_PROFILES,
   STUDIES,
-  TRADE_PROMO,
   type ChannelId,
   type GameSettings,
   type RegionId,
   type ScoreKey,
   type SegmentId,
 } from "./config";
-import { claimIsTrue, fit, normalizeDecision, quote, regionIds, specProblems, unitCostAt } from "./product";
+import { AWARENESS, DEMAND_MODEL, REGION_PROFILES, SATISFACTION, SEGMENT_PROFILES, TRADE_PROMO } from "./market";
+import { claimIsTrue, normalizeDecision, quote, regionIds, specProblems, unitCostAt } from "./product";
 import { mulberry32, hashString } from "./rng";
+import { fit } from "./fit";
 import type {
   FirmDecision,
   FirmMeta,

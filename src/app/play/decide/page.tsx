@@ -1,0 +1,687 @@
+"use client";
+import { Fragment, Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { api, money, num } from "@/components/client";
+import { SaveState, useTeam, type TeamData } from "@/components/TeamContext";
+import {
+  CHANNELS,
+  CHANNEL_TERMS,
+  CLAIMS,
+  COMPONENTS,
+  ENTRY_MODES,
+  MEDIA,
+  PRODUCTION,
+  PRODUCT_RULES,
+  REGIONS,
+  ROUNDS,
+  SEGMENTS,
+  SENSORS,
+  UNLOCKS,
+  type ChannelId,
+  type ClaimId,
+  type RegionId,
+  type SegmentId,
+  type SensorId,
+} from "@/sim/config";
+import { LEARN } from "@/sim/content";
+import { newProduct, quote, supportedClaims } from "@/sim/product";
+import type { FirmDecision, ProductSpec } from "@/sim/types";
+
+const TABS = [
+  { id: "strategy", label: "Strategy & goals", unlock: UNLOCKS.strategy },
+  { id: "products", label: "Products", unlock: UNLOCKS.products },
+  { id: "markets", label: "Markets & channels", unlock: UNLOCKS.markets },
+  { id: "pricing", label: "Price & promotion", unlock: UNLOCKS.pricing },
+  { id: "production", label: "Forecast & production", unlock: UNLOCKS.production },
+  { id: "review", label: "Review & submit", unlock: 0 },
+];
+
+// Region channels (public): mirrors the hidden region settings' channel lists.
+const REGION_CHANNELS: Record<RegionId, ChannelId[]> = {
+  na: ["online", "marketplace", "mass", "electronics", "pharmacy", "specialty", "carrier", "bizdist"],
+  eu: ["online", "marketplace", "mass", "electronics", "pharmacy", "specialty", "carrier", "bizdist"],
+  apac: ["online", "marketplace", "mass", "electronics", "pharmacy", "specialty", "carrier", "bizdist"],
+  latam: ["online", "marketplace", "mass", "electronics", "pharmacy", "carrier", "bizdist"],
+};
+
+function Learn({ id }: { id: string }) {
+  return (
+    <details className="learn" open>
+      <summary>Learn</summary>
+      <p style={{ margin: "6px 0 0" }}>{LEARN[id]}</p>
+    </details>
+  );
+}
+
+function NumIn({ value, onChange, step = 1, min = 0, disabled }: { value: number | null | undefined; onChange: (v: number | null) => void; step?: number; min?: number; disabled?: boolean }) {
+  return (
+    <input
+      type="number"
+      step={step}
+      min={min}
+      disabled={disabled}
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+    />
+  );
+}
+
+function sellable(t: TeamData) {
+  const round = t.game.round;
+  const committed = new Map(t.committed.map((c) => [c.id, c]));
+  return t.decision.products.filter((p) => {
+    const c = committed.get(p.id);
+    return c && !c.retired && !p.retire && c.launchRound <= round;
+  });
+}
+function activeRegions(t: TeamData) {
+  return REGIONS.filter((r) => t.regionsEntered[r.id] || t.decision.regions[r.id].enter);
+}
+
+export default function DecidePage() {
+  return (
+    <Suspense>
+      <Decide />
+    </Suspense>
+  );
+}
+
+function Decide() {
+  const { team } = useTeam();
+  const sp = useSearchParams();
+  const t = team!;
+  const round = t.game.round;
+  const tab = sp.get("tab") ?? "strategy";
+  const current = TABS.find((x) => x.id === tab) ?? TABS[0];
+  if (round > ROUNDS.final) return <div className="panel">The game is over.</div>;
+
+  return (
+    <>
+      <div className="row">
+        <h1 style={{ margin: 0 }}>Decisions: {ROUNDS.names[round]}</h1>
+        <span className="spacer" />
+        <SaveState />
+      </div>
+      <div className="tabs" style={{ marginTop: 12 }}>
+        {TABS.map((x) => (
+          <a key={x.id} href={`/play/decide?tab=${x.id}`} className={`${x.id === current.id ? "active" : ""} ${round < x.unlock ? "locked" : ""}`}>
+            {x.label}
+            {round < x.unlock ? " 🔒" : ""}
+          </a>
+        ))}
+      </div>
+      {round < current.unlock ? (
+        <div className="panel">
+          <p>This screen opens in {ROUNDS.names[current.unlock]}.</p>
+          <Learn id={current.id} />
+        </div>
+      ) : (
+        <>
+          {current.id === "strategy" && <Strategy />}
+          {current.id === "products" && <Products />}
+          {current.id === "markets" && <Markets />}
+          {current.id === "pricing" && <Pricing />}
+          {current.id === "production" && <Production />}
+          {current.id === "review" && <Review />}
+        </>
+      )}
+    </>
+  );
+}
+
+function Strategy() {
+  const { team, set } = useTeam();
+  const t = team!;
+  const s = t.decision.strategy;
+  const g = t.decision.goals;
+  const toggle = (path: string, list: string[], id: string) => set(path, list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+  return (
+    <div className="grid2">
+      <div className="panel">
+        <Learn id="strategy" />
+        <label>Company name</label>
+        <input type="text" value={s.companyName} onChange={(e) => set("strategy.companyName", e.target.value)} placeholder={t.firm.name} />
+        <label>Mission</label>
+        <textarea value={s.mission} onChange={(e) => set("strategy.mission", e.target.value)} />
+        <label>Positioning statement</label>
+        <textarea value={s.positioning} onChange={(e) => set("strategy.positioning", e.target.value)} placeholder="For [target], [brand] is the [category] that [key benefit] because [reason to believe]." />
+        <label>Competitive posture</label>
+        <select value={s.posture} onChange={(e) => set("strategy.posture", e.target.value)}>
+          <option value="">Choose…</option>
+          <option value="differentiate">Differentiate on features and design</option>
+          <option value="cost">Lead on cost and price</option>
+          <option value="niche">Focus on a niche</option>
+          <option value="follow">Fast follower</option>
+        </select>
+        <label>Team norms (how you'll work together)</label>
+        <textarea value={s.norms} onChange={(e) => set("strategy.norms", e.target.value)} />
+      </div>
+      <div>
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>Target segments</h3>
+          <p className="small muted">Your Market and Customer scores count only these segments.</p>
+          {SEGMENTS.map((x) => (
+            <label className="inline" key={x.id} style={{ display: "flex" }}>
+              <input type="checkbox" checked={s.targetSegments.includes(x.id)} onChange={() => toggle("strategy.targetSegments", s.targetSegments, x.id)} />
+              {x.name}
+            </label>
+          ))}
+          <h3>Target regions</h3>
+          <p className="small muted">Your Channel score measures coverage of target buyers in these regions.</p>
+          {REGIONS.map((x) => (
+            <label className="inline" key={x.id}>
+              <input type="checkbox" checked={s.targetRegions.includes(x.id)} onChange={() => toggle("strategy.targetRegions", s.targetRegions, x.id)} />
+              {x.name}
+            </label>
+          ))}
+        </div>
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>Goals for this round</h3>
+          {t.game.round < UNLOCKS.goals ? (
+            <p className="muted">Goals open in Round 1.</p>
+          ) : (
+            <>
+              <p className="small muted">{LEARN.goals}</p>
+              <div className="grid2">
+                <div>
+                  <label>Share of target segments (%)</label>
+                  <NumIn value={g.share} onChange={(v) => set("goals.share", v)} />
+                </div>
+                <div>
+                  <label>Revenue ($)</label>
+                  <NumIn value={g.revenue} step={10000} onChange={(v) => set("goals.revenue", v)} />
+                </div>
+                <div>
+                  <label>Operating margin (%)</label>
+                  <NumIn value={g.margin} min={-100} onChange={(v) => set("goals.margin", v)} />
+                </div>
+                <div>
+                  <label>Awareness in targets (%)</label>
+                  <NumIn value={g.awareness} onChange={(v) => set("goals.awareness", v)} />
+                </div>
+                <div>
+                  <label>Satisfaction (%)</label>
+                  <NumIn value={g.satisfaction} onChange={(v) => set("goals.satisfaction", v)} />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Products() {
+  const { team, push, remove } = useTeam();
+  const t = team!;
+  const round = t.game.round;
+  const committed = new Map(t.committed.map((c) => [c.id, c]));
+  const live = t.decision.products.filter((p) => !(committed.get(p.id)?.retired));
+  const allowed = round < PRODUCT_RULES.thirdProductBriefRound ? PRODUCT_RULES.maxProductsAtLaunch : PRODUCT_RULES.maxProductsTotal;
+  return (
+    <>
+      <Learn id="products" />
+      {t.decision.products.map((p) => (
+        <ProductCard key={p.id} p={p} committed={committed.get(p.id)} onRemove={() => remove("products", p.id)} />
+      ))}
+      {live.length < allowed ? (
+        <button
+          className="primary"
+          onClick={() => push("products", { ...newProduct(`p${Date.now().toString(36)}`, t.decision.products.length + 1) })}
+        >
+          + New product brief
+        </button>
+      ) : (
+        <p className="muted small">
+          You have {live.length} of {allowed} products allowed {round < PRODUCT_RULES.thirdProductBriefRound ? `now. A third product can be briefed from ${ROUNDS.names[PRODUCT_RULES.thirdProductBriefRound]}.` : "."}
+        </p>
+      )}
+    </>
+  );
+}
+
+function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: TeamData["committed"][number]; onRemove: () => void }) {
+  const { team, set } = useTeam();
+  const t = team!;
+  const round = t.game.round;
+  const locked = !!committed;
+  const q = quote(p, round);
+  const base = `products.#${p.id}`;
+  const sel = (key: keyof typeof COMPONENTS) => (
+    <div>
+      <label>{COMPONENTS[key].label}</label>
+      <select disabled={locked} value={p[key] as string} onChange={(e) => set(`${base}.${key}`, e.target.value)}>
+        {Object.entries(COMPONENTS[key].options).map(([k, v]) => (
+          <option key={k} value={k}>
+            {v.name} (${v.cost})
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+  const status = committed
+    ? committed.retired
+      ? <span className="badge">Retired</span>
+      : committed.launchRound > round
+        ? <span className="badge warn">In development: ready in {ROUNDS.names[committed.launchRound]}</span>
+        : <span className="badge good">On the market</span>
+    : p.commission
+      ? <span className="badge accent">Brief will be sent at the deadline</span>
+      : <span className="badge">Draft brief</span>;
+  return (
+    <div className="product-card">
+      <div className="row">
+        <input type="text" value={p.name} onChange={(e) => set(`${base}.name`, e.target.value)} style={{ maxWidth: 260, fontWeight: 600 }} />
+        {status}
+        <span className="spacer" />
+        {!locked && (
+          <button className="danger" onClick={onRemove}>
+            Delete draft
+          </button>
+        )}
+        {locked && !committed!.retired && (
+          <label className="inline">
+            <input type="checkbox" checked={p.retire} onChange={(e) => set(`${base}.retire`, e.target.checked)} /> Retire at the deadline
+          </label>
+        )}
+      </div>
+      <div className="grid2">
+        <div>
+          <div className="grid2">
+            <div>
+              <label>Tier</label>
+              <select disabled={locked} value={p.tier} onChange={(e) => set(`${base}.tier`, e.target.value)}>
+                <option value="good">Good</option>
+                <option value="better">Better</option>
+                <option value="best">Best</option>
+              </select>
+            </div>
+            <div>
+              <label>Main target segment</label>
+              <select disabled={locked} value={p.targetSegment} onChange={(e) => set(`${base}.targetSegment`, e.target.value as SegmentId)}>
+                {SEGMENTS.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            {sel("chip")}
+            {sel("form")}
+            {sel("battery")}
+            {sel("display")}
+            {sel("material")}
+            {sel("water")}
+            {sel("privacy")}
+            <div>
+              <label>Premium app plan ($/month, 0 = none)</label>
+              <NumIn value={p.subscriptionPrice} step={1} onChange={(v) => set(`${base}.subscriptionPrice`, v ?? 0)} />
+            </div>
+          </div>
+          <label>Sensors</label>
+          {(Object.keys(SENSORS) as SensorId[]).map((s) => (
+            <label key={s} className="inline">
+              <input
+                type="checkbox"
+                disabled={locked}
+                checked={p.sensors.includes(s)}
+                onChange={() => set(`${base}.sensors`, p.sensors.includes(s) ? p.sensors.filter((x) => x !== s) : [...p.sensors, s])}
+              />
+              {SENSORS[s].name} (${SENSORS[s].cost})
+            </label>
+          ))}
+        </div>
+        <div>
+          <div className="panel" style={{ background: "#fafbfc" }}>
+            <h3 style={{ marginTop: 0 }}>Engineering quote</h3>
+            <div className="kv">
+              <div>Unit cost</div>
+              <div><b>${q.unitCost.toFixed(2)}</b></div>
+              <div>Development fee (one time)</div>
+              <div><b>{money(q.devFee)}</b></div>
+              <div>Lead time</div>
+              <div>{q.leadTime} round</div>
+            </div>
+            <details style={{ marginTop: 8 }}>
+              <summary className="small">Cost breakdown</summary>
+              <div className="kv small">
+                {q.lines.map((l, i) => (
+                  <Fragment key={i}><div>{l.label}</div><div>${l.cost}</div></Fragment>
+                ))}
+              </div>
+            </details>
+            {q.problems.map((x, i) => (
+              <div key={i} className="notice bad">{x}</div>
+            ))}
+            {!locked && (
+              <label className="inline" style={{ marginTop: 10 }}>
+                <input type="checkbox" checked={p.commission} disabled={q.problems.length > 0} onChange={(e) => set(`${base}.commission`, e.target.checked)} />
+                <b>Send this brief and accept the quote</b>
+              </label>
+            )}
+            {!locked && <p className="small muted">The fee is paid from company capital at the deadline. After that the design is locked.</p>}
+            {locked && <p className="small muted">Accepted. Components are locked; you can still rename it, change its app plan price and its ad claims.</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Markets() {
+  const { team, set } = useTeam();
+  const t = team!;
+  return (
+    <>
+      <Learn id="markets" />
+      <div className="grid2">
+        {REGIONS.map((r) => {
+          const rd = t.decision.regions[r.id];
+          const entered = t.regionsEntered[r.id] as keyof typeof ENTRY_MODES | undefined;
+          return (
+            <div className="panel" key={r.id}>
+              <div className="row">
+                <h3 style={{ margin: 0 }}>{r.name}</h3>
+                <span className="spacer" />
+                {entered ? <span className="badge good">Entered via {ENTRY_MODES[entered].name.toLowerCase()}</span> : (
+                  <label className="inline">
+                    <input type="checkbox" checked={rd.enter} onChange={(e) => set(`regions.${r.id}.enter`, e.target.checked)} /> Enter this round
+                  </label>
+                )}
+              </div>
+              {!entered && rd.enter && (
+                <>
+                  <label>Entry mode</label>
+                  <select value={rd.entryMode} onChange={(e) => set(`regions.${r.id}.entryMode`, e.target.value)}>
+                    {Object.entries(ENTRY_MODES).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v.name}: fee {money(v.fee)}, partner margin +{Math.round(v.extraMargin * 100)} pts, reach x{v.coverageBoost}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+              {(entered || rd.enter) && (
+                <>
+                  <label>Channels</label>
+                  <table>
+                    <thead>
+                      <tr><th></th><th>Channel</th><th className="num">Partner margin</th><th className="num">Setup fee</th></tr>
+                    </thead>
+                    <tbody>
+                      {REGION_CHANNELS[r.id].map((ch) => (
+                        <tr key={ch}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={rd.channels.includes(ch)}
+                              onChange={() => set(`regions.${r.id}.channels`, rd.channels.includes(ch) ? rd.channels.filter((x) => x !== ch) : [...rd.channels, ch])}
+                            />
+                          </td>
+                          <td>{CHANNELS.find((c) => c.id === ch)!.name}</td>
+                          <td className="num">{ch === "online" ? "0% + fulfillment" : `${Math.round(CHANNEL_TERMS[ch].margin * 100)}%`}</td>
+                          <td className="num">{money(CHANNEL_TERMS[ch].setupFee)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="small muted">Setup fees are paid once, the first round you open a channel. Dropping a channel and reopening it later costs the fee again.</p>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function Pricing() {
+  const { team, set } = useTeam();
+  const t = team!;
+  const d = t.decision;
+  const prods = sellable(t);
+  const regions = activeRegions(t);
+  const mixTotal = MEDIA.reduce((a, m) => a + (d.mediaMix[m.id] ?? 0), 0);
+  const promo = prods.reduce((a, p) => a + regions.reduce((b, r) => b + (d.plan[p.id]?.[r.id]?.promotion ?? 0), 0), 0);
+  return (
+    <>
+      <Learn id="pricing" />
+      {!prods.length && <div className="notice warn">You have no products on the market this round. Products are ready one round after engineering accepts the brief.</div>}
+      {!regions.length && <div className="notice warn">Enter at least one region on the Markets & channels screen first.</div>}
+      <div className="panel">
+        <h3 style={{ marginTop: 0 }}>Promotion split across media</h3>
+        <div className="grid4">
+          {MEDIA.map((m) => (
+            <div key={m.id}>
+              <label>{m.name} (%)</label>
+              <NumIn value={d.mediaMix[m.id]} onChange={(v) => set(`mediaMix.${m.id}`, v ?? 0)} />
+            </div>
+          ))}
+        </div>
+        <p className={`small ${mixTotal === 100 ? "muted" : ""}`} style={mixTotal === 100 ? {} : { color: "var(--bad)" }}>
+          Total {mixTotal}% {mixTotal !== 100 && "(should be 100%; the split is scaled to fit)"}. Trade promotion pays partners to push your brand and lifts channel reach; the rest builds awareness.
+        </p>
+      </div>
+      {prods.map((p) => {
+        const truthful = supportedClaims(p);
+        return (
+          <div className="panel" key={p.id}>
+            <h3 style={{ marginTop: 0 }}>{p.name} <span className="muted small">({p.tier}, unit cost about ${t.committed.find((c) => c.id === p.id)?.unitCost.toFixed(2)})</span></h3>
+            <table>
+              <thead>
+                <tr><th>Region</th><th className="num">List price ($)</th><th className="num">Promotion ($)</th></tr>
+              </thead>
+              <tbody>
+                {regions.map((r) => {
+                  const pl = d.plan[p.id]?.[r.id];
+                  return (
+                    <tr key={r.id}>
+                      <td>{r.name}</td>
+                      <td style={{ width: 180 }}><NumIn value={pl?.price ?? null} step={1} onChange={(v) => set(`plan.${p.id}.${r.id}.price`, v ?? 0)} /></td>
+                      <td style={{ width: 200 }}><NumIn value={pl?.promotion ?? null} step={10000} onChange={(v) => set(`plan.${p.id}.${r.id}.promotion`, v ?? 0)} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <label>Ad claims (pick up to 3, most important first)</label>
+            {(Object.keys(CLAIMS) as ClaimId[]).map((c) => {
+              const on = p.claims.includes(c);
+              const unsupported = c !== "price" && !truthful.has(c);
+              return (
+                <label key={c} className="inline">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    disabled={!on && p.claims.length >= 3}
+                    onChange={() => set(`products.#${p.id}.claims`, on ? p.claims.filter((x) => x !== c) : [...p.claims, c])}
+                  />
+                  {CLAIMS[c].name}
+                  {unsupported && <span className="badge bad" title="The product doesn't have the features to back this claim">can&apos;t back up</span>}
+                </label>
+              );
+            })}
+          </div>
+        );
+      })}
+      <p className="muted">Promotion planned: <b>{money(promo)}</b> · marketing budget available: {money(t.budget.available - t.budget.research)}</p>
+    </>
+  );
+}
+
+function Production() {
+  const { team, set } = useTeam();
+  const t = team!;
+  const d = t.decision;
+  const prods = sellable(t);
+  const regions = activeRegions(t);
+  const total = prods.reduce((a, p) => a + regions.reduce((b, r) => b + (d.plan[p.id]?.[r.id]?.production ?? 0), 0), 0);
+  const cap = t.budget.capacity;
+  const usedPct = cap ? total / cap : 0;
+  return (
+    <>
+      <Learn id="production" />
+      <div className="panel">
+        <div className="row">
+          <b>Factory capacity this round: {num(cap)} units</b>
+          <span className="spacer" />
+          <span>Planned: {num(total)} ({Math.round(usedPct * 100)}%)</span>
+        </div>
+        <div className="bar" style={{ marginTop: 8 }}>
+          <div style={{ width: `${Math.min(100, usedPct * 100)}%`, background: usedPct > 1 + PRODUCTION.overtimeMax ? "var(--bad)" : usedPct > 1 ? "var(--warn)" : "var(--accent)" }} />
+        </div>
+        {usedPct > 1 && usedPct <= 1 + PRODUCTION.overtimeMax && <div className="notice warn">You're into overtime: units above capacity cost {Math.round(PRODUCTION.overtimeCostPremium * 100)}% more.</div>}
+        {usedPct > 1 + PRODUCTION.overtimeMax && <div className="notice bad">Over the limit. The factory can make at most {num(cap * (1 + PRODUCTION.overtimeMax))} units with overtime; production will be cut proportionally.</div>}
+      </div>
+      {prods.map((p) => (
+        <div className="panel" key={p.id}>
+          <h3 style={{ marginTop: 0 }}>{p.name}</h3>
+          <table>
+            <thead>
+              <tr><th>Region</th><th className="num">In stock now</th><th className="num">Sales forecast (units)</th><th className="num">Production (units)</th><th></th></tr>
+            </thead>
+            <tbody>
+              {regions.map((r) => {
+                const pl = d.plan[p.id]?.[r.id];
+                const stock = t.inventory[p.id]?.[r.id] ?? 0;
+                const f = pl?.forecast ?? 0;
+                const supply = (pl?.production ?? 0) + stock;
+                const gap = f > 0 ? Math.abs(supply - f) / f : supply > 0 ? 1 : 0;
+                return (
+                  <tr key={r.id}>
+                    <td>{r.name}</td>
+                    <td className="num">{num(stock)}</td>
+                    <td style={{ width: 180 }}><NumIn value={pl?.forecast ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.forecast`, v ?? 0)} /></td>
+                    <td style={{ width: 180 }}><NumIn value={pl?.production ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.production`, v ?? 0)} /></td>
+                    <td>{gap > PRODUCTION.forecastGapWarning && <span className="badge warn">Stock + production is {Math.round(gap * 100)}% off forecast</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      <div className="panel">
+        <h3 style={{ marginTop: 0 }}>Add capacity</h3>
+        <div className="row">
+          <div style={{ width: 200 }}>
+            <label>Extra units per round</label>
+            <NumIn value={d.capacityExpansion} step={5000} onChange={(v) => set("capacityExpansion", v ?? 0)} />
+          </div>
+          <p className="small muted" style={{ flex: 1 }}>
+            Costs {money(PRODUCTION.expansionCostPerUnit)} per unit of capacity from company capital ({money(d.capacityExpansion * PRODUCTION.expansionCostPerUnit)} now). It comes online next round, and every unit of capacity costs {money(PRODUCTION.fixedCostPerCapacityUnit)} per round whether you use it or not.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Review() {
+  const { team, set, flush } = useTeam();
+  const t = team!;
+  const d = t.decision;
+  const b = t.budget;
+  const [proj, setProj] = useState<null | { pnl: Record<string, number>; supply: { productId: string; region: string; demand: number; sold: number; lost: number; endInventory: number }[]; notes: string[] }>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const round = t.game.round;
+  const committed = new Set(t.committed.map((c) => c.id));
+  const devFees = d.products.filter((p) => p.commission && !committed.has(p.id)).reduce((a, p) => a + quote(p, round).devFee, 0);
+  const entryFees = REGIONS.filter((r) => d.regions[r.id].enter && !t.regionsEntered[r.id]).reduce((a, r) => a + ENTRY_MODES[d.regions[r.id].entryMode].fee, 0);
+  const expansion = d.capacityExpansion * PRODUCTION.expansionCostPerUnit;
+  const roundsLeft = ROUNDS.final - round + 1;
+  const pace = round >= 3 && b.promotion + b.research > 0 && (b.available - b.research - b.promotion) < (b.promotion + b.research) * (roundsLeft - 1) * 0.6;
+
+  async function project() {
+    setBusy(true);
+    setErr("");
+    try {
+      await flush();
+      const r = await api("/api/team/projection", { body: {} });
+      setProj(r.projection);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <>
+      <Learn id="review" />
+      <div className="grid2">
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>Budget check: marketing</h3>
+          <div className="kv">
+            <div>Carried over</div><div>{money(b.carried)}</div>
+            <div>Released by head office this round</div><div>{money(b.release)}</div>
+            <div>Earned top-up</div><div>{money(b.earned)}</div>
+            <div><b>Available</b></div><div><b>{money(b.available)}</b></div>
+            <div>Research bought</div><div>-{money(b.research)}</div>
+            <div>Promotion planned</div><div>-{money(b.promotion)}</div>
+            <div><b>Left after this round</b></div><div><b style={{ color: b.remaining < 0 ? "var(--bad)" : undefined }}>{money(b.remaining)}</b></div>
+          </div>
+          {b.remaining < 0 && <div className="notice bad">Promotion is over budget. It will be scaled down to fit at the deadline.</div>}
+          {pace && <div className="notice warn">Burn-rate warning: at this pace, the marketing budget runs out before the final round.</div>}
+          {b.futureReleases > 0 && <p className="small muted">Still to come from head office: {money(b.futureReleases)}.</p>}
+        </div>
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>Budget check: company capital</h3>
+          <div className="kv">
+            <div>Capital now</div><div>{money(b.capital)}</div>
+            <div>Engineering fees (new briefs)</div><div>-{money(devFees)}</div>
+            <div>Region entry fees</div><div>-{money(entryFees)}</div>
+            <div>Capacity expansion</div><div>-{money(expansion)}</div>
+            <div><b>Before production and sales</b></div><div><b>{money(b.capital - devFees - entryFees - expansion)}</b></div>
+          </div>
+          <p className="small muted">Production, holding costs, channel setup and overhead also come from capital; sales revenue flows back in.</p>
+        </div>
+      </div>
+      {round >= 1 && (
+        <div className="panel">
+          <div className="row">
+            <h3 style={{ margin: 0 }}>Projected results</h3>
+            <span className="spacer" />
+            <button onClick={project} disabled={busy}>{busy ? "Projecting…" : "Run projection"}</button>
+          </div>
+          <p className="small muted">An estimate that assumes every rival repeats its last-round decisions. Real results will differ.</p>
+          {err && <div className="notice bad">{err}</div>}
+          {proj && (
+            <>
+              <div className="grid4">
+                <div className="stat"><div className="k">Revenue</div><div className="v">{money(proj.pnl.revenue, true)}</div></div>
+                <div className="stat"><div className="k">Operating profit</div><div className="v">{money(proj.pnl.operatingProfit, true)}</div></div>
+                <div className="stat"><div className="k">Units demanded</div><div className="v">{num(proj.supply.reduce((a, s) => a + s.demand, 0))}</div></div>
+                <div className="stat"><div className="k">Units short</div><div className="v">{num(proj.supply.reduce((a, s) => a + s.lost, 0))}</div></div>
+              </div>
+              <table style={{ marginTop: 12 }}>
+                <thead><tr><th>Product</th><th>Region</th><th className="num">Demand</th><th className="num">Sold</th><th className="num">Short</th><th className="num">Left over</th></tr></thead>
+                <tbody>
+                  {proj.supply.map((s, i) => (
+                    <tr key={i}>
+                      <td>{d.products.find((p) => p.id === s.productId)?.name}</td>
+                      <td>{REGIONS.find((r) => r.id === s.region)?.name}</td>
+                      <td className="num">{num(s.demand)}</td>
+                      <td className="num">{num(s.sold)}</td>
+                      <td className="num">{num(s.lost)}</td>
+                      <td className="num">{num(s.endInventory)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {proj.notes.map((n, i) => <div key={i} className="notice info">{n}</div>)}
+            </>
+          )}
+        </div>
+      )}
+      <div className="panel">
+        <h3 style={{ marginTop: 0 }}>Round reflection</h3>
+        <p className="small muted">What did you decide this round and why? What did last round teach you? Your instructor grades this.</p>
+        <textarea value={d.reflection} onChange={(e) => set("reflection", e.target.value)} style={{ minHeight: 120 }} />
+      </div>
+      <div className="notice info">There's no submit button: whatever is saved at the deadline is used. <SaveState /></div>
+    </>
+  );
+}
+
+export type { FirmDecision };

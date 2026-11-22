@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runRound, makeAiFirms } from "../src/sim/run";
-import { quote, newProduct, fit } from "../src/sim/product";
+import { quote, newProduct } from "../src/sim/product";
+import { fit } from "../src/sim/fit";
 import type { RoundResult } from "../src/sim/types";
 
 function playSeason(seed: number, levels?: number[]) {
