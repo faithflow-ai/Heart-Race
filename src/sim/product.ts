@@ -29,6 +29,7 @@ export function newProduct(id: string, n: number): ProductSpec {
     sensors: ["hr", "stress"],
     subscriptionPrice: 0,
     claims: [],
+    briefSent: false,
     commission: false,
     retire: false,
   };

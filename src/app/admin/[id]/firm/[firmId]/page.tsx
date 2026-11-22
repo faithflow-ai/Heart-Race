@@ -16,7 +16,8 @@ export default function FirmView({ params }: { params: Promise<{ id: string; fir
     api(`/api/games/${id}`).then((o) => {
       setRounds(o.rounds.map((r: { round: number }) => r.round));
       setCurrent(o.game.current_round);
-      setRound((r) => (r === null ? Math.min(o.game.current_round, 7) : r));
+      const fromUrl = new URLSearchParams(window.location.search).get("round");
+      setRound((r) => (r === null ? (fromUrl !== null ? Number(fromUrl) : Math.min(o.game.current_round, 7)) : r));
     });
   }, [id]);
   useEffect(() => {

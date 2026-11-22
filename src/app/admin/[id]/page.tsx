@@ -1,5 +1,5 @@
 "use client";
-import { use, useCallback, useEffect, useState } from "react";
+import { Fragment, use, useCallback, useEffect, useState } from "react";
 import { api, fmtTime, money, timeLeft } from "@/components/client";
 import { AI, ROUNDS, type AiStyle } from "@/sim/config";
 
@@ -22,12 +22,13 @@ interface Firm {
 interface Overview {
   game: {
     id: string; name: string; code: string; status: string; current_round: number; deadline: string | null;
-    deadline_weekday: number; deadline_time: string; timezone: string;
+    deadline_weekday: number; deadline_time: string; timezone: string; start_at: string | null;
     settings: { scorecardWeights: Record<string, number>; marketingBudget: { earnedBase: number; earnedRevenueShare: number; earnedFloor: number; earnedCapGrowth: number } };
   };
   firms: Firm[];
   rounds: { round: number; processed_at: string; run_count: number }[];
   flagged: { firm: string; title: string; detail: string }[];
+  demo: { password: string; students: { name: string; email: string; team: string | null }[] } | null;
 }
 
 export default function Console({ params }: { params: Promise<{ id: string }> }) {
@@ -72,19 +73,21 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
       {msg && <div className={`notice ${msg.kind}`}>{msg.text}</div>}
 
       <div className="grid4" style={{ margin: "16px 0" }}>
-        <div className="stat"><div className="k">Status</div><div className="v" style={{ fontSize: 18 }}>{over ? "Finished" : g.status === "setup" ? "Not started" : "Running"}</div></div>
+        <div className="stat"><div className="k">Status</div><div className="v" style={{ fontSize: 18 }}>{over ? "Finished" : g.status === "setup" ? (g.current_round > 0 ? "Paused" : "Not started") : "Running"}</div>{g.status === "setup" && g.start_at && <div className="s">Starts {fmtTime(g.start_at, g.timezone)}</div>}</div>
         <div className="stat"><div className="k">Open round</div><div className="v" style={{ fontSize: 18 }}>{ROUNDS.names[g.current_round] ?? "–"}</div></div>
         <div className="stat"><div className="k">Deadline</div><div className="v" style={{ fontSize: 15 }}>{fmtTime(g.deadline, g.timezone)}</div><div className="s">{timeLeft(g.deadline)}</div></div>
         <div className="stat"><div className="k">Students joined</div><div className="v">{students.reduce((a, f) => a + f.members.length, 0)}</div></div>
       </div>
 
+      {o.demo && <DemoPanel id={id} demo={o.demo} />}
+
       <div className="panel">
         <div className="row">
-          {g.status === "setup" && !over && <button className="primary" disabled={busy} onClick={() => patch({ start: true }, "Game started. Rounds will process automatically at each deadline.")}>Start game (deadlines on)</button>}
+          {g.status === "setup" && !over && <button className="primary" disabled={busy} onClick={() => window.confirm("Start the deadline clock now? Rounds will then close and score automatically at each weekly deadline.") && patch({ start: true }, "Deadline clock started. Rounds will close and score automatically at each deadline.")}>{g.current_round > 0 ? "Resume automatic deadlines" : "Start now (turns on the deadline clock)"}</button>}
           {g.status === "active" && <button disabled={busy} onClick={() => patch({ pause: true }, "Automatic processing paused.")}>Pause automatic processing</button>}
           {!over && (
-            <button disabled={busy} onClick={() => window.confirm(`Process ${ROUNDS.names[g.current_round]} now? Teams can't edit it afterwards.`) && act(() => api(`/api/games/${id}/run`, { body: {} }), "Round processed.")}>
-              Run {ROUNDS.names[g.current_round]} now
+            <button disabled={busy} onClick={() => window.confirm(`Close and score ${ROUNDS.names[g.current_round]} now?\n\nTeams can no longer edit ${ROUNDS.names[g.current_round]}, results post right away and ${ROUNDS.names[g.current_round + 1] ?? "the end of the game"} opens. This can't be undone (you can only re-run it with the same decisions).`) && act(() => api(`/api/games/${id}/run`, { body: {} }), "Round closed and scored.")}>
+              Close and score {ROUNDS.names[g.current_round]} now
             </button>
           )}
           {o.rounds.length > 0 && (
@@ -93,8 +96,10 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
             </button>
           )}
         </div>
-        <p className="small muted">Rounds process on their own at the deadline. Use Run now to process early (for example to test), and Re-run after a fix to recompute the last round with the same decisions. There is no tool to change a team's results.</p>
+        <p className="small muted">Rounds close and score on their own at each deadline once the deadline clock is on. <b>Close and score now</b> ends the open round early (for example to test) and opens the next one. <b>Re-run</b> recomputes the last scored round with the same decisions, after a fix. There is no tool to change a team&apos;s results.</p>
       </div>
+
+      <Dashboard id={id} />
 
       <div className="grid2">
         <Schedule g={g} onSave={(b) => patch(b)} />
@@ -148,11 +153,16 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
                 </td>
                 <td className="small">{f.edits ? <span className="badge good">{f.edits} edits</span> : <span className="badge warn">No edits (will carry forward)</span>}<div className="muted">{f.lastEdit ? `last ${fmtTime(f.lastEdit, g.timezone)}` : ""}</div></td>
                 <td className="num">{f.lastScore ? `${f.lastScore.total.toFixed(1)} (#${f.lastScore.rank})` : "–"}</td>
-                <td className="num"><a href={`/admin/${id}/firm/${f.id}`}>View</a></td>
+                <td className="num" style={{ whiteSpace: "nowrap" }}>
+                  <a href={`/admin/${id}/firm/${f.id}`}>Details</a>
+                  {" · "}
+                  <a href="#" onClick={async (e) => { e.preventDefault(); await api(`/api/games/${id}/viewas`, { body: { firmId: f.id } }); window.location.href = "/play"; }}>View as student</a>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+        <p className="small muted">View as student opens the team&apos;s own screens, read-only: you see what they see, but nothing you do there changes their decisions.</p>
       </div>
 
       <div className="panel">
@@ -196,9 +206,22 @@ function Schedule({ g, onSave }: { g: Overview["game"]; onSave: (b: unknown) => 
   const [time, setTime] = useState(g.deadline_time);
   const [tz, setTz] = useState(g.timezone);
   const [oneOff, setOneOff] = useState("");
+  const [startAt, setStartAt] = useState(g.start_at ? toLocalInput(g.start_at, g.timezone) : "");
   return (
     <div className="panel">
-      <h2 style={{ marginTop: 0 }}>Weekly deadline</h2>
+      {g.status === "setup" && g.current_round === 0 && (
+        <>
+          <h2 style={{ marginTop: 0 }}>Start date</h2>
+          <p className="small muted">Pick when the game starts. On that date the deadline clock turns on by itself and the first deadline is the next weekly deadline after it. Or use &quot;Start now&quot; above.</p>
+          <div className="row">
+            <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} style={{ flex: 1 }} />
+            <button disabled={!startAt} onClick={() => onSave({ startAt })}>Set start date</button>
+            {g.start_at && <button onClick={() => { setStartAt(""); onSave({ startAt: null }); }}>Clear</button>}
+          </div>
+          <p className="small">{g.start_at ? <>Starts automatically: <b>{fmtTime(g.start_at, g.timezone)}</b></> : <span className="muted">No start date set.</span>}</p>
+        </>
+      )}
+      <h2 style={{ marginTop: g.status === "setup" && g.current_round === 0 ? 20 : 0 }}>Weekly deadline</h2>
       <div className="grid3">
         <div>
           <label>Day</label>
@@ -260,4 +283,173 @@ function MarketRules({ g, onSave }: { g: Overview["game"]; onSave: (b: unknown) 
       </div>
     </div>
   );
+}
+
+/** "2027-01-11T08:00" in the class time zone, for a datetime-local input. */
+function toLocalInput(iso: string, tz: string) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+function DemoPanel({ id, demo }: { id: string; demo: NonNullable<Overview["demo"]> }) {
+  const [busy, setBusy] = useState(false);
+  async function del() {
+    if (!window.confirm("Delete this demo class and all its fake student accounts? This can't be undone. Your other classes are not affected.")) return;
+    setBusy(true);
+    await api(`/api/games/${id}`, { method: "DELETE" });
+    window.location.href = "/admin";
+  }
+  return (
+    <div className="panel" style={{ borderColor: "var(--warn)", background: "var(--warn-soft)" }}>
+      <div className="row">
+        <h2 style={{ margin: 0 }}>Demo class (sample data)</h2>
+        <span className="spacer" />
+        <button className="danger" disabled={busy} onClick={del}>Delete demo class</button>
+      </div>
+      <p className="small">Fake students and sample decisions. To see the student side, sign out and sign in as any student below, or use <b>View as student</b> on a team. All fake students share one password: <code style={{ fontSize: 15 }}>{demo.password}</code></p>
+      <details>
+        <summary className="small"><b>Show fake student logins</b></summary>
+        <table style={{ marginTop: 6 }}>
+          <thead><tr><th>Student</th><th>Email (sign-in)</th><th>Team</th></tr></thead>
+          <tbody>
+            {demo.students.map((s) => (
+              <tr key={s.email}><td>{s.name}</td><td><code>{s.email}</code></td><td>{s.team ?? <span className="badge">Not on a team yet: use to test joining with the class code</span>}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+    </div>
+  );
+}
+
+interface Dash {
+  firms: { id: string; name: string; isAi: boolean }[];
+  rounds: {
+    round: number;
+    firms: {
+      id: string; rank: number | null; total: number | null; points: Record<string, number> | null; revenue: number; profit: number;
+      unitShare: number; targetShare: number | null; awareness: number | null; satisfaction: number | null;
+      goals: { key: string; label: string; goal: number | null; actual: number }[]; forecastAccuracy: number | null; carriedForward: boolean;
+    }[];
+  }[];
+}
+
+function Dashboard({ id }: { id: string }) {
+  const [d, setD] = useState<Dash | null>(null);
+  const [round, setRound] = useState<number | null>(null);
+  const [goalsFor, setGoalsFor] = useState<string | null>(null);
+  useEffect(() => {
+    api<Dash>(`/api/games/${id}/dashboard`).then((x) => {
+      setD(x);
+      setRound(x.rounds.length ? x.rounds[x.rounds.length - 1].round : null);
+    });
+  }, [id]);
+  if (!d) return null;
+  const scored = d.rounds.filter((r) => r.round >= 1);
+  const name = (fid: string) => d.firms.find((f) => f.id === fid);
+  if (!scored.length)
+    return (
+      <div className="panel">
+        <h2 style={{ marginTop: 0 }}>Class results</h2>
+        <p className="muted">No scored rounds yet. Results for all 8 firms appear here after Round 1 closes (the Practice round isn&apos;t scored).</p>
+      </div>
+    );
+  const r = scored.find((x) => x.round === round) ?? scored[scored.length - 1];
+  const rows = [...r.firms].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+  const pts = (v: number | undefined) => (v === undefined ? "–" : Math.round(v));
+  return (
+    <div className="panel">
+      <div className="row">
+        <h2 style={{ margin: 0 }}>Class results</h2>
+        <span className="spacer" />
+        <div className="tabs" style={{ margin: 0, border: "none" }}>
+          {scored.map((x) => (
+            <button key={x.round} className={x.round === r.round ? "active" : ""} onClick={() => setRound(x.round)}>{ROUNDS.names[x.round]}</button>
+          ))}
+        </div>
+      </div>
+      <div className="scroll">
+        <table style={{ marginTop: 8 }}>
+          <thead>
+            <tr>
+              <th>#</th><th>Firm</th><th className="num">Total</th><th className="num">Market</th><th className="num">Customer</th><th className="num">Financial</th><th className="num">Channel</th><th className="num">Goals</th>
+              <th className="num">Revenue</th><th className="num">Op. profit</th><th className="num">Unit share</th><th className="num">Awareness</th><th className="num">Satisfaction</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((f) => {
+              const firm = name(f.id);
+              return (
+                <Fragment key={f.id}>
+                  <tr>
+                    <td>{f.rank}</td>
+                    <td>
+                      <a href={`/admin/${id}/firm/${f.id}?round=${r.round}`}>{firm?.name}</a> {firm?.isAi && <span className="badge">AI</span>}
+                      {f.carriedForward && <span className="badge warn" style={{ marginLeft: 4 }}>carried forward</span>}
+                    </td>
+                    <td className="num"><b>{f.total?.toFixed(1) ?? "–"}</b></td>
+                    <td className="num">{pts(f.points?.market)}</td>
+                    <td className="num">{pts(f.points?.customer)}</td>
+                    <td className="num">{pts(f.points?.financial)}</td>
+                    <td className="num">{pts(f.points?.channel)}</td>
+                    <td className="num">{pts(f.points?.goals)}</td>
+                    <td className="num">{money(f.revenue, true)}</td>
+                    <td className="num" style={{ color: f.profit < 0 ? "var(--bad)" : undefined }}>{money(f.profit, true)}</td>
+                    <td className="num">{(f.unitShare * 100).toFixed(1)}%</td>
+                    <td className="num">{f.awareness === null ? "–" : `${Math.round(f.awareness)}%`}</td>
+                    <td className="num">{f.satisfaction === null ? "–" : `${Math.round(f.satisfaction)}%`}</td>
+                    <td className="num"><a href="#" className="small" onClick={(e) => { e.preventDefault(); setGoalsFor(goalsFor === f.id ? null : f.id); }}>{goalsFor === f.id ? "hide goals" : "goals vs. actual"}</a></td>
+                  </tr>
+                  {goalsFor === f.id && (
+                    <tr>
+                      <td></td>
+                      <td colSpan={13}>
+                        <div className="kv small" style={{ maxWidth: 560, gridTemplateColumns: "1fr auto auto" }}>
+                          <div className="muted">Goal</div><div className="muted">Set</div><div className="muted">Actual</div>
+                          {f.goals.map((gl) => (
+                            <Fragment key={gl.key}><div>{gl.label}</div><div>{gl.goal === null ? "–" : gl.key === "revenue" ? money(gl.goal, true) : gl.goal}</div><div>{gl.key === "revenue" ? money(gl.actual, true) : gl.actual}</div></Fragment>
+                          ))}
+                          <div>Sales forecast accuracy</div><div></div><div>{f.forecastAccuracy === null ? "–" : `${Math.round(f.forecastAccuracy * 100)}%`}</div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <h3>Total score by round</h3>
+      <div className="scroll">
+        <table>
+          <thead><tr><th>Firm</th>{scored.map((x) => <th key={x.round} className="num">{ROUNDS.names[x.round]}</th>)}<th>Trend</th></tr></thead>
+          <tbody>
+            {rows.map((f) => {
+              const series = scored.map((x) => x.firms.find((y) => y.id === f.id)?.total ?? null);
+              return (
+                <tr key={f.id}>
+                  <td>{name(f.id)?.name} {name(f.id)?.isAi && <span className="badge">AI</span>}</td>
+                  {scored.map((x, i) => {
+                    const ff = x.firms.find((y) => y.id === f.id);
+                    return <td key={x.round} className="num">{series[i]?.toFixed(1) ?? "–"} <span className="muted small">(#{ff?.rank ?? "–"})</span></td>;
+                  })}
+                  <td><Spark values={series} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="small muted">Scores are 0 to 100 points per measure against the best firm that round. Click a firm for its full report and decisions.</p>
+    </div>
+  );
+}
+
+function Spark({ values }: { values: (number | null)[] }) {
+  const v = values.map((x) => x ?? 0);
+  if (v.length < 2) return <span className="muted small">–</span>;
+  const w = 90, h = 22, min = Math.min(...v) - 2, max = Math.max(...v) + 2;
+  const pts = v.map((x, i) => `${(i / (v.length - 1)) * w},${h - ((x - min) / (max - min || 1)) * h}`).join(" ");
+  return <svg width={w} height={h} aria-hidden><polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth={2} /></svg>;
 }

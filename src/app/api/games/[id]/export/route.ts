@@ -3,6 +3,7 @@ import { q } from "@/lib/db";
 import { getFirms, getResult, processedRounds } from "@/lib/game";
 import { instructorGame } from "@/lib/access";
 import { csv, handle } from "@/lib/http";
+import { productNames, readable, type RawLog } from "@/lib/logtext";
 import { GRADE_BANDS, ROUNDS } from "@/sim/config";
 
 /** CSV exports for the gradebook: scores, final, roster, reflections, log. */
@@ -69,10 +70,14 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
     return csv(`${slug}-reflections.csv`, rows);
   }
 
-  // Change log
-  const log = await q<{ team: string; round: number; at: string; name: string; path: string; new_value: unknown }>(
-    "select f.name as team, c.round, c.at, u.name, c.path, c.new_value from change_log c join firms f on f.id = c.firm_id join users u on u.id = c.user_id where f.game_id = $1 order by c.at",
+  // Change log, in plain language (no-op edits left out).
+  const log = await q<RawLog & { team: string; round: number; at: string; name: string; email: string }>(
+    "select c.firm_id, f.name as team, c.round, c.at, u.name, u.email, c.path, c.old_value, c.new_value from change_log c join firms f on f.id = c.firm_id join users u on u.id = c.user_id where f.game_id = $1 order by c.at",
     [g.id],
   );
-  return csv(`${slug}-change-log.csv`, [["team", "round", "time", "student", "field", "new_value"], ...log.map((l) => [l.team, ROUNDS.names[Number(l.round)], new Date(l.at).toISOString(), l.name, l.path, JSON.stringify(l.new_value)])]);
+  const rowsOut = readable(log, await productNames({ gameId: g.id }));
+  return csv(`${slug}-change-log.csv`, [
+    ["team", "round", "time", "student", "email", "change"],
+    ...rowsOut.map((l) => [l.team, ROUNDS.names[Number(l.round)], new Date(l.at).toLocaleString("en-US", { timeZone: g.timezone }), l.name, l.email, `${l.name} ${l.text}`]),
+  ]);
 });

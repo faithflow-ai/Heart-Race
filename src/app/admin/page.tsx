@@ -10,6 +10,19 @@ export default function AdminHome() {
   const [name, setName] = useState("MKT 475 Spring 2027");
   const [teams, setTeams] = useState(6);
   const [err, setErr] = useState("");
+  const [demoBusy, setDemoBusy] = useState(false);
+  async function createDemo() {
+    if (!window.confirm("Create a demo class? It adds a separate class labeled DEMO with 13 fake students, 4 teams and 3 rounds already played. Your other classes are not touched, and you can delete the demo any time.")) return;
+    setDemoBusy(true);
+    setErr("");
+    try {
+      const r = await api("/api/games/demo", { body: {} });
+      window.location.href = `/admin/${r.game.id}`;
+    } catch (e) {
+      setErr((e as Error).message);
+      setDemoBusy(false);
+    }
+  }
   useEffect(() => {
     api("/api/games").then((r) => setGames(r.games));
   }, []);
@@ -24,7 +37,8 @@ export default function AdminHome() {
   }
   return (
     <>
-      <h1>Your classes</h1>
+      <h1 style={{ marginBottom: 2 }}>Your classes</h1>
+      <p className="muted" style={{ marginTop: 0 }}>Heart Race: the MKT 475 Marketing Capstone simulation. Student teams run smart health wearables companies and compete with each other and AI rivals.</p>
       <div className="panel">
         {!games && <p className="muted">Loading…</p>}
         {games && !games.length && <p className="muted">No classes yet. Create one below.</p>}
@@ -34,7 +48,7 @@ export default function AdminHome() {
             <tbody>
               {games.map((g) => (
                 <tr key={g.id}>
-                  <td><a href={`/admin/${g.id}`}>{g.name}</a></td>
+                  <td><a href={`/admin/${g.id}`}>{g.name}</a>{g.name.startsWith("DEMO") && <span className="badge warn" style={{ marginLeft: 6 }}>Demo</span>}</td>
                   <td><code>{g.code}</code></td>
                   <td>{g.status}</td>
                   <td>{ROUNDS.names[g.current_round] ?? "Finished"}</td>
@@ -56,6 +70,11 @@ export default function AdminHome() {
           {err && <div className="notice bad">{err}</div>}
           <button className="primary">Create class</button>
         </form>
+      </div>
+      <div className="panel" style={{ maxWidth: 520 }}>
+        <h2 style={{ marginTop: 0 }}>Try it with sample data</h2>
+        <p className="small">Creates a separate class labeled <b>DEMO</b> with fake students on 4 teams, sample decisions and the Practice round, Round 1 and Round 2 already scored. Use it to review the results screens, the student view and the CSV exports. It never touches your other classes, and you can delete it from its class screen.</p>
+        <button disabled={demoBusy} onClick={createDemo}>{demoBusy ? "Building the demo class (about 10 seconds)…" : "Create demo class"}</button>
       </div>
     </>
   );

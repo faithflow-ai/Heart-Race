@@ -84,3 +84,14 @@ create table if not exists research_reports (
   bought_at timestamptz not null default now(),
   primary key (firm_id, round, study)
 );
+
+-- Added Nov 2026: optional automatic start date (the deadline clock turns on at this time).
+alter table games add column if not exists start_at timestamptz;
+
+-- Added Nov 2026: self-service password reset (only used when email sending is set up).
+create table if not exists password_resets (
+  token_hash text primary key,
+  user_id text not null references users(id) on delete cascade,
+  expires_at timestamptz not null,
+  used_at timestamptz
+);
