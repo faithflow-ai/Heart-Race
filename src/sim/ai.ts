@@ -73,7 +73,7 @@ export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
   // --- Products: brief two in the practice round, a third in round 3 -------
   if (ctx.round === 0 && d.products.length === 0) {
     targets.slice(0, 2).forEach((s, i) => d.products.push(designFor(s, `p${i + 1}`, `${firm.name} ${["One", "Pro"][i]}`, skill, noise, firm.aiStyle)));
-    d.products.forEach((p) => (p.commission = true));
+    d.products.forEach((p) => ((p.briefSent = true), (p.commission = true)));
   }
   if (ctx.round === 3 && d.products.length < 3 && skill >= 0.3 && ctx.prevResult) {
     const served: Record<string, number> = {};
@@ -85,6 +85,7 @@ export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
       .sort((a, b) => b.room - a.room)[0];
     if (gap) {
       const p = designFor(gap.s, "p3", `${firm.name} Go`, skill, noise, firm.aiStyle);
+      p.briefSent = true;
       p.commission = true;
       d.products.push(p);
     }

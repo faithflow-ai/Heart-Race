@@ -31,7 +31,9 @@ export interface ProductSpec {
   subscriptionPrice: number;
   /** Ad claims featured, in priority order (max 3). Can change every round. */
   claims: ClaimId[];
-  /** true = send the brief and accept engineering's quote this round. */
+  /** true = the brief was sent to engineering and a quote came back (components frozen until "Revise brief"). */
+  briefSent: boolean;
+  /** true = the team accepted engineering's quote this round (fee charged and design locked at the deadline). */
   commission: boolean;
   /** true = stop selling this product. */
   retire: boolean;

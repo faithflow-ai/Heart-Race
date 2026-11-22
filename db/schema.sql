@@ -84,3 +84,6 @@ create table if not exists research_reports (
   bought_at timestamptz not null default now(),
   primary key (firm_id, round, study)
 );
+
+-- Added Nov 2026: optional automatic start date (the deadline clock turns on at this time).
+alter table games add column if not exists start_at timestamptz;

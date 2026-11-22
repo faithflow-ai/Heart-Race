@@ -2,6 +2,7 @@ import { HttpError, requireInstructor } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { firmMeta, getFirms, getResult, processedRounds, setTeamCount, settingsOf } from "@/lib/game";
 import { instructorGame } from "@/lib/access";
+import { deleteDemoGame, demoInfo } from "@/lib/demo";
 import { handle } from "@/lib/http";
 import { nextDeadline, zonedToUtc } from "@/lib/time";
 
@@ -23,6 +24,7 @@ export const GET = handle(async (_req: Request, ctx: Ctx) => {
     : [];
   return {
     game: { ...g, settings: settingsOf(g) },
+    demo: demoInfo(g),
     firms: firms.map((f) => ({
       ...f,
       effectiveLevel: firmMeta(f, Math.min(g.current_round, 7)).aiLevel,
@@ -61,10 +63,20 @@ export const PATCH = handle(async (req: Request, ctx: Ctx) => {
     const d = zonedToUtc(g.timezone, +m[1], +m[2], +m[3], +m[4], +m[5]);
     await q("update games set deadline = $1 where id = $2", [d.toISOString(), g.id]);
   }
+  if (b.startAt !== undefined) {
+    if (b.startAt === null) await q("update games set start_at = null where id = $1", [g.id]);
+    else {
+      const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(b.startAt);
+      if (!m) throw new HttpError(400, "Pick a start date and time.");
+      if (g.status !== "setup" || g.current_round > 0) throw new HttpError(400, "The game has already started.");
+      const d = zonedToUtc(g.timezone, +m[1], +m[2], +m[3], +m[4], +m[5]);
+      await q("update games set start_at = $1 where id = $2", [d.toISOString(), g.id]);
+    }
+  }
   if (b.start) {
     if (g.status !== "setup") throw new HttpError(400, "The game has already started.");
     const d = nextDeadline(new Date(), g.deadline_weekday, g.deadline_time, g.timezone);
-    await q("update games set status = 'active', deadline = coalesce(deadline, $1) where id = $2", [d.toISOString(), g.id]);
+    await q("update games set status = 'active', start_at = null, deadline = coalesce(deadline, $1) where id = $2", [d.toISOString(), g.id]);
   }
   if (b.pause !== undefined) {
     await q("update games set status = $1 where id = $2 and status <> 'done'", [b.pause ? "setup" : "active", g.id]);
@@ -83,5 +95,12 @@ export const PATCH = handle(async (req: Request, ctx: Ctx) => {
     for (const k of ["earnedBase", "earnedRevenueShare", "earnedFloor", "earnedCapGrowth"] as const) if (b.budget[k] !== undefined) mb[k] = Number(b.budget[k]);
     await q("update games set settings = $1 where id = $2", [JSON.stringify({ ...s, marketingBudget: mb }), g.id]);
   }
+  return { ok: true };
+});
+
+/** Delete a demo class and its fake student accounts (real classes can't be deleted here). */
+export const DELETE = handle(async (_req: Request, ctx: Ctx) => {
+  const u = await requireInstructor();
+  await deleteDemoGame(u, (await ctx.params).id);
   return { ok: true };
 });

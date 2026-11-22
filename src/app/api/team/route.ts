@@ -7,7 +7,7 @@ import { handle } from "@/lib/http";
 /** Everything a team's screens need for the open round. */
 export const GET = handle(async () => {
   const user = await requireUser();
-  const { game, firm } = await studentContext(user);
+  const { game, firm, viewAs } = await studentContext(user);
   const round = Math.min(game.current_round, 7);
   const { data, updated_at } = await getDecision(firm.id, round);
   const latest = await latestResult(game);
@@ -17,6 +17,7 @@ export const GET = handle(async () => {
   const reports = await q<{ round: number; study: string }>("select round, study from research_reports where firm_id = $1 order by round, study", [firm.id]);
   return {
     user,
+    viewAs: !!viewAs,
     game: { id: game.id, name: game.name, status: game.status, round: game.current_round, deadline: game.deadline, timezone: game.timezone },
     firm: { id: firm.id, name: firm.name },
     members,

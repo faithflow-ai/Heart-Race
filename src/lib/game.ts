@@ -22,6 +22,7 @@ export interface GameRow {
   seed: number;
   settings: Partial<GameSettings>;
   processing_at: string | null;
+  start_at: string | null;
 }
 export interface FirmRow {
   id: string;
@@ -140,7 +141,8 @@ export interface Op {
   value?: unknown;
 }
 
-const LOCKED_FIELDS = new Set(["tier", "targetSegment", "chip", "form", "battery", "display", "material", "water", "privacy", "sensors", "commission"]);
+const DESIGN_FIELDS = new Set(["tier", "targetSegment", "chip", "form", "battery", "display", "material", "water", "privacy", "sensors"]);
+const LOCKED_FIELDS = new Set([...DESIGN_FIELDS, "commission", "briefSent"]);
 
 function walk(doc: unknown, segs: string[]): { parent: Record<string, unknown> | unknown[]; key: string | number } {
   let cur: unknown = doc;
@@ -170,6 +172,7 @@ function step(cur: unknown, seg: string, create: boolean): unknown {
 }
 
 export async function applyOps(g: GameRow, firmId: string, round: number, user: User, ops: Op[]) {
+  if (user.role === "instructor") throw new HttpError(403, "View as student is read-only.");
   if (round !== g.current_round || g.status === "done") throw new HttpError(409, "This round is closed. Reload to see the new round.");
   if (g.deadline && new Date(g.deadline).getTime() <= Date.now() && g.status === "active") throw new HttpError(409, "The deadline has passed. Results are being processed.");
   const { data } = await getDecision(firmId, round);
@@ -181,6 +184,12 @@ export async function applyOps(g: GameRow, firmId: string, round: number, user: 
     if (segs[0] === "research") throw new HttpError(400, "Buy research on the Research screen.");
     if (segs[0] === "products" && segs[1]?.startsWith("#") && committed.has(segs[1].slice(1)) && LOCKED_FIELDS.has(segs[2] ?? "")) {
       throw new HttpError(400, "Engineering has accepted this product, so its components are locked.");
+    }
+    if (segs[0] === "products" && segs[1]?.startsWith("#") && !committed.has(segs[1].slice(1))) {
+      const prod = data.products.find((x) => x.id === segs[1].slice(1));
+      const field = segs[2] ?? "";
+      if (prod && field === "commission" && op.value === true && !prod.briefSent) throw new HttpError(400, "Send the brief to engineering and get a quote before accepting it.");
+      if (prod && prod.briefSent && DESIGN_FIELDS.has(field)) throw new HttpError(400, "This brief is with engineering. Click \"Revise brief\" to change it.");
     }
     const { parent, key } = walk(data, segs);
     const p = parent as Record<string | number, unknown>;
@@ -248,6 +257,7 @@ export function budgetEstimate(g: GameRow, latest: RoundResult | null, firmId: s
 }
 
 export async function buyStudy(g: GameRow, firmId: string, user: User, study: StudyId) {
+  if (user.role === "instructor") throw new HttpError(403, "View as student is read-only.");
   const st = STUDIES[study];
   if (!st) throw new HttpError(400, "Unknown study.");
   const round = g.current_round;
@@ -344,6 +354,12 @@ export async function rerunLastRound(g: GameRow) {
 
 /** Process any game whose deadline has passed. Called by the scheduled job and on page loads. */
 export async function processDue(gameId?: string) {
+  // Games with a start date that has arrived: turn on the deadline clock.
+  const starting = await q<GameRow>(`select * from games where status = 'setup' and start_at is not null and start_at <= now() ${gameId ? "and id = $1" : ""}`, gameId ? [gameId] : []);
+  for (const g of starting) {
+    const d = nextDeadline(new Date(g.start_at!), g.deadline_weekday, g.deadline_time, g.timezone);
+    await q("update games set status = 'active', start_at = null, deadline = coalesce(deadline, $1) where id = $2 and status = 'setup'", [d.toISOString(), g.id]);
+  }
   const due = await q<GameRow>(
     `select * from games where status = 'active' and deadline is not null and deadline <= now() and processing_at is null ${gameId ? "and id = $1" : ""}`,
     gameId ? [gameId] : [],
