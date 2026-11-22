@@ -2,6 +2,8 @@
 import { use, useEffect, useState } from "react";
 import { api } from "@/components/client";
 import { ReportView } from "@/components/ReportView";
+import { DecisionsView } from "@/components/DecisionsView";
+import { normalizeDecision } from "@/sim/product";
 import { ROUNDS } from "@/sim/config";
 import type { FirmDecision, FirmReport, ScoreBreakdown } from "@/sim/types";
 
@@ -11,6 +13,7 @@ export default function FirmView({ params }: { params: Promise<{ id: string; fir
   const [data, setData] = useState<{ firm: { name: string; is_ai: boolean }; round: number; decision: FirmDecision | null; report: FirmReport | null; score: ScoreBreakdown | null } | null>(null);
   const [rounds, setRounds] = useState<number[]>([]);
   const [current, setCurrent] = useState(0);
+  const [view, setView] = useState<"decisions" | "results">("decisions");
 
   useEffect(() => {
     api(`/api/games/${id}`).then((o) => {
@@ -37,21 +40,24 @@ export default function FirmView({ params }: { params: Promise<{ id: string; fir
         </select>
         <a href={`/admin/${id}`}>← Console</a>
       </div>
-      {data?.report && <div style={{ marginTop: 16 }}><ReportView round={data.round} report={data.report} score={data.score} names={names} /></div>}
-      <div className="panel" style={{ marginTop: 16 }}>
-        <h2 style={{ marginTop: 0 }}>Decisions{data && data.round === current ? " so far (round still open)" : ""}</h2>
-        {data?.decision ? (
-          <>
-            <p><b>Mission:</b> {data.decision.strategy.mission || <span className="muted">–</span>}</p>
-            <p><b>Positioning:</b> {data.decision.strategy.positioning || <span className="muted">–</span>}</p>
-            <p><b>Targets:</b> {data.decision.strategy.targetSegments.join(", ") || "–"} in {data.decision.strategy.targetRegions.join(", ") || "–"}</p>
-            {data.decision.reflection && <p><b>Reflection:</b> {data.decision.reflection}</p>}
-            <details><summary>All decision data</summary><pre className="small" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data.decision, null, 2)}</pre></details>
-          </>
-        ) : (
-          <p className="muted">AI decisions are made at processing time and appear here after the round runs.</p>
-        )}
+      <div className="tabs" style={{ marginTop: 12 }}>
+        <button className={view === "decisions" ? "active" : ""} onClick={() => setView("decisions")}>Decisions (inputs)</button>
+        <button className={view === "results" ? "active" : ""} onClick={() => setView("results")}>Results report</button>
       </div>
+      {view === "decisions" && (
+        <>
+          {data && data.round === current && <div className="notice info">This round is still open: these are the team&apos;s decisions so far, and they can still change before the deadline.</div>}
+          {data?.decision ? (
+            <>
+              <DecisionsView d={normalizeDecision(data.decision)} round={data.round} />
+              <details className="small"><summary>Raw decision data (for troubleshooting)</summary><pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data.decision, null, 2)}</pre></details>
+            </>
+          ) : (
+            <p className="muted">AI decisions are made at processing time and appear here after the round runs.</p>
+          )}
+        </>
+      )}
+      {view === "results" && (data?.report ? <ReportView round={data.round} report={data.report} score={data.score} names={names} /> : <p className="muted">No results yet for this round. Results appear after the round is scored.</p>)}
     </>
   );
 }

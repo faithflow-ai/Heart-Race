@@ -154,7 +154,7 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
                 <td className="small">{f.edits ? <span className="badge good">{f.edits} edits</span> : <span className="badge warn">No edits (will carry forward)</span>}<div className="muted">{f.lastEdit ? `last ${fmtTime(f.lastEdit, g.timezone)}` : ""}</div></td>
                 <td className="num">{f.lastScore ? `${f.lastScore.total.toFixed(1)} (#${f.lastScore.rank})` : "–"}</td>
                 <td className="num" style={{ whiteSpace: "nowrap" }}>
-                  <a href={`/admin/${id}/firm/${f.id}`}>Details</a>
+                  <a href={`/admin/${id}/firm/${f.id}`}>Decisions &amp; results</a>
                   {" · "}
                   <a href="#" onClick={async (e) => { e.preventDefault(); await api(`/api/games/${id}/viewas`, { body: { firmId: f.id } }); window.location.href = "/play"; }}>View as student</a>
                 </td>

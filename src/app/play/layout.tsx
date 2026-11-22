@@ -14,6 +14,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           { href: "/play/decide", label: "Decisions" },
           { href: "/play/research", label: "Research" },
           { href: "/play/results", label: "Results" },
+          { href: "/play/history", label: "Past decisions" },
           { href: "/play/log", label: "Change log" },
           { href: "/play/help", label: "How it works" },
         ]}
