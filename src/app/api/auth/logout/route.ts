@@ -1,0 +1,7 @@
+import { endSession } from "@/lib/auth";
+import { handle } from "@/lib/http";
+
+export const POST = handle(async () => {
+  await endSession();
+  return { ok: true };
+});

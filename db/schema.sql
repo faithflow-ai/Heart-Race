@@ -1,0 +1,86 @@
+-- Heart Race database schema (Postgres / Supabase).
+-- The app runs this automatically on startup; it is safe to run more than once.
+
+create table if not exists users (
+  id text primary key,
+  email text not null unique,
+  name text not null,
+  password_hash text not null,
+  role text not null default 'student',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists games (
+  id text primary key,
+  name text not null,
+  code text not null unique,
+  instructor_id text not null references users(id),
+  status text not null default 'setup',          -- setup | active | done
+  current_round int not null default 0,          -- round open for decisions (0 = practice, 7 = final, 8 = over)
+  deadline timestamptz,                          -- when the current round processes
+  deadline_weekday int not null default 0,       -- 0 = Sunday
+  deadline_time text not null default '23:59',
+  timezone text not null default 'America/Los_Angeles',
+  seed int not null,
+  settings jsonb not null default '{}'::jsonb,
+  processing_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists firms (
+  id text primary key,
+  game_id text not null references games(id) on delete cascade,
+  name text not null,
+  slot int not null,
+  is_ai boolean not null default false,
+  ai_level real,                                 -- null = follow the default ramp
+  ai_style text not null default 'premium'
+);
+
+create table if not exists members (
+  user_id text not null references users(id) on delete cascade,
+  game_id text not null references games(id) on delete cascade,
+  firm_id text not null references firms(id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  primary key (user_id, game_id)
+);
+
+create table if not exists decisions (
+  firm_id text not null references firms(id) on delete cascade,
+  round int not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now(),
+  updated_by text,
+  primary key (firm_id, round)
+);
+
+create table if not exists change_log (
+  id bigserial primary key,
+  firm_id text not null references firms(id) on delete cascade,
+  round int not null,
+  user_id text not null,
+  at timestamptz not null default now(),
+  path text not null,
+  old_value jsonb,
+  new_value jsonb
+);
+create index if not exists change_log_firm_round on change_log (firm_id, round, at desc);
+
+create table if not exists results (
+  game_id text not null references games(id) on delete cascade,
+  round int not null,
+  data jsonb not null,
+  processed_at timestamptz not null default now(),
+  run_count int not null default 1,
+  primary key (game_id, round)
+);
+
+create table if not exists research_reports (
+  firm_id text not null references firms(id) on delete cascade,
+  round int not null,
+  study text not null,
+  data jsonb not null,
+  bought_by text,
+  bought_at timestamptz not null default now(),
+  primary key (firm_id, round, study)
+);
