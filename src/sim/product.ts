@@ -50,6 +50,7 @@ export function emptyDecision(): FirmDecision {
     mediaMix,
     capacityExpansion: 0,
     reflection: "",
+    ready: false,
   };
 }
 

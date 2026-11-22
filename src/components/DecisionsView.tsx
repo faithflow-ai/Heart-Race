@@ -15,7 +15,15 @@ function Text({ v }: { v: string }) {
 }
 
 /** A team's inputs for one round, as readable tables (read-only). */
-export function DecisionsView({ d, round }: { d: FirmDecision; round: number }) {
+export function DecisionsView({ d, round, accepted = {} }: { d: FirmDecision; round: number; accepted?: Record<string, { briefedRound: number; launchRound: number }> }) {
+  const status = (p: FirmDecision["products"][number]) => {
+    const a = accepted[p.id];
+    if (p.retire) return "Retired at this deadline";
+    if (a && a.briefedRound < round) return a.launchRound <= round ? "On the market" : "In development";
+    if (p.commission || (a && a.briefedRound === round)) return "Quote accepted this round (ready next round)";
+    if (p.briefSent) return "Quote received, not accepted";
+    return "Draft brief";
+  };
   const s = d.strategy;
   const regions = REGIONS.filter((r) => d.regions[r.id]?.enter);
   const planRows = d.products.flatMap((p) => REGIONS.filter((r) => d.plan[p.id]?.[r.id]).map((r) => ({ p, r, pl: d.plan[p.id][r.id] })));
@@ -71,9 +79,9 @@ export function DecisionsView({ d, round }: { d: FirmDecision; round: number }) 
                 {d.products.map((p) => (
                   <tr key={p.id}>
                     <td><b>{p.name}</b></td>
-                    <td className="small">{p.retire ? "Retiring" : p.commission ? "Quote accepted / on the market" : p.briefSent ? "Quote received, not accepted" : "Draft"}</td>
+                    <td className="small">{status(p)}</td>
                     <td className="small">{TIER[p.tier]} · {seg(p.targetSegment)}</td>
-                    <td className="small">{opt("form", p.form)}, {opt("chip", p.chip)} chip, {opt("battery", p.battery)} battery, {opt("display", p.display)} display, {opt("material", p.material)}, {opt("water", p.water)}, {opt("privacy", p.privacy)} privacy</td>
+                    <td className="small">{opt("form", p.form)}, {opt("chip", p.chip)} chip, {opt("battery", p.battery)} battery, {opt("display", p.display)} display, {opt("material", p.material)}, {opt("water", p.water)}, {p.privacy === "medical" ? "medical-grade privacy" : "standard privacy"}</td>
                     <td className="small">{p.sensors.map((x) => SENSORS[x]?.name ?? x).join(", ") || "–"}</td>
                     <td className="small">{p.claims.map((c) => CLAIMS[c]?.name ?? c).join(", ") || "–"}</td>
                     <td className="num small">{p.subscriptionPrice ? `$${p.subscriptionPrice}/mo` : "–"}</td>

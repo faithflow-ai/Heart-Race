@@ -17,6 +17,7 @@ interface Firm {
   members: Member[];
   edits: number;
   lastEdit: string | null;
+  ready: boolean;
   lastScore: { total: number; rank: number } | null;
 }
 interface Overview {
@@ -151,7 +152,7 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
                     </div>
                   ))}
                 </td>
-                <td className="small">{f.edits ? <span className="badge good">{f.edits} edits</span> : <span className="badge warn">No edits (will carry forward)</span>}<div className="muted">{f.lastEdit ? `last ${fmtTime(f.lastEdit, g.timezone)}` : ""}</div></td>
+                <td className="small">{f.ready ? <div><span className="badge good">✓ Team says ready</span></div> : <div><span className="badge">Not marked ready</span></div>}{f.edits ? <span className="badge good">{f.edits} edits</span> : <span className="badge warn">No edits (will carry forward)</span>}<div className="muted">{f.lastEdit ? `last ${fmtTime(f.lastEdit, g.timezone)}` : ""}</div></td>
                 <td className="num">{f.lastScore ? `${f.lastScore.total.toFixed(1)} (#${f.lastScore.rank})` : "–"}</td>
                 <td className="num" style={{ whiteSpace: "nowrap" }}>
                   <a href={`/admin/${id}/firm/${f.id}`}>Decisions &amp; results</a>

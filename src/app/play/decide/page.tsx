@@ -745,6 +745,15 @@ function Review() {
         <p className="small muted">What did you decide this round and why? What did last round teach you? Your instructor grades this.</p>
         <textarea value={d.reflection} onChange={(e) => set("reflection", e.target.value)} style={{ minHeight: 120 }} />
       </div>
+      <div className="panel">
+        <div className="row">
+          <h3 style={{ margin: 0 }}>Team status</h3>
+          {d.ready ? <span className="badge good">✓ Ready</span> : <span className="badge">Not ready</span>}
+          <span className="spacer" />
+          {d.ready ? <button onClick={() => set("ready", false)}>Mark not ready</button> : <button className="primary" onClick={() => set("ready", true)}>Mark our team ready</button>}
+        </div>
+        <p className="small muted" style={{ marginBottom: 0 }}>This only tells your teammates and instructor you&apos;re done. It doesn&apos;t lock or submit anything: anyone can keep editing, and whatever is saved at the deadline is used.</p>
+      </div>
       <div className="notice info">There&apos;s no submit button: whatever is saved at the deadline is used. <SaveState /></div>
     </>
   );

@@ -23,12 +23,13 @@ function History() {
   const rounds = t.processed.map((p) => p.round);
   const round = sp.get("round") !== null ? Number(sp.get("round")) : rounds[rounds.length - 1];
   const [d, setD] = useState<FirmDecision | null>(null);
+  const [accepted, setAccepted] = useState<Record<string, { briefedRound: number; launchRound: number }>>({});
   const [err, setErr] = useState("");
 
   useEffect(() => {
     if (round === undefined) return;
     setD(null);
-    api(`/api/team/results?round=${round}`).then((r) => setD(normalizeDecision(r.decision))).catch((e) => setErr(e.message));
+    api(`/api/team/results?round=${round}`).then((r) => { setAccepted(r.accepted ?? {}); setD(normalizeDecision(r.decision)); }).catch((e) => setErr(e.message));
   }, [round]);
 
   if (!rounds.length)
@@ -52,7 +53,7 @@ function History() {
       <p className="muted">Exactly what your team had saved when {ROUNDS.names[round]} closed. Compare it with that round&apos;s <a href={`/play/results?round=${round}`}>results</a>.</p>
       {err && <div className="notice bad">{err}</div>}
       {!d && !err && <p className="muted">Loading…</p>}
-      {d && <DecisionsView d={d} round={round} />}
+      {d && <DecisionsView d={d} round={round} accepted={accepted} />}
     </>
   );
 }

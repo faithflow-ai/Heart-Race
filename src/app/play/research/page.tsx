@@ -4,6 +4,7 @@ import { api, money } from "@/components/client";
 import { useTeam } from "@/components/TeamContext";
 import { ROUNDS, STUDIES, type StudyId } from "@/sim/config";
 import type { StudyReport } from "@/sim/research";
+import { STUDY_INFO } from "@/sim/content";
 
 export default function ResearchPage() {
   const { team, reload } = useTeam();
@@ -74,7 +75,20 @@ export default function ResearchPage() {
           <tbody>
             {(Object.keys(STUDIES) as StudyId[]).filter((s) => !("practiceOnly" in STUDIES[s]) || round === 0).map((s) => (
               <tr key={s}>
-                <td>{STUDIES[s].name}</td>
+                <td>
+                  <b>{STUDIES[s].name}</b>
+                  {STUDY_INFO[s] && (
+                    <>
+                      <div className="small">{STUDY_INFO[s].answers}</div>
+                      <details className="small">
+                        <summary className="muted">More about this study</summary>
+                        <p style={{ margin: "4px 0" }}><b>What&apos;s in it:</b> {STUDY_INFO[s].contents}</p>
+                        <p style={{ margin: "4px 0" }}><b>Most useful:</b> {STUDY_INFO[s].when}</p>
+                        <p style={{ margin: "4px 0" }}><b>Marketing idea:</b> {STUDY_INFO[s].concept}</p>
+                      </details>
+                    </>
+                  )}
+                </td>
                 <td className="num">{STUDIES[s].cost ? money(STUDIES[s].cost) : "Free"}</td>
                 <td className="num">
                   {t.viewAs ? (

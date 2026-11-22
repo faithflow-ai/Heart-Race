@@ -10,7 +10,7 @@ import type { FirmDecision, FirmReport, ScoreBreakdown } from "@/sim/types";
 export default function FirmView({ params }: { params: Promise<{ id: string; firmId: string }> }) {
   const { id, firmId } = use(params);
   const [round, setRound] = useState<number | null>(null);
-  const [data, setData] = useState<{ firm: { name: string; is_ai: boolean }; round: number; decision: FirmDecision | null; report: FirmReport | null; score: ScoreBreakdown | null } | null>(null);
+  const [data, setData] = useState<{ firm: { name: string; is_ai: boolean }; round: number; decision: FirmDecision | null; accepted?: Record<string, { briefedRound: number; launchRound: number }>; report: FirmReport | null; score: ScoreBreakdown | null } | null>(null);
   const [rounds, setRounds] = useState<number[]>([]);
   const [current, setCurrent] = useState(0);
   const [view, setView] = useState<"decisions" | "results">("decisions");
@@ -49,7 +49,7 @@ export default function FirmView({ params }: { params: Promise<{ id: string; fir
           {data && data.round === current && <div className="notice info">This round is still open: these are the team&apos;s decisions so far, and they can still change before the deadline.</div>}
           {data?.decision ? (
             <>
-              <DecisionsView d={normalizeDecision(data.decision)} round={data.round} />
+              <DecisionsView d={normalizeDecision(data.decision)} round={data.round} accepted={data.accepted} />
               <details className="small"><summary>Raw decision data (for troubleshooting)</summary><pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(data.decision, null, 2)}</pre></details>
             </>
           ) : (

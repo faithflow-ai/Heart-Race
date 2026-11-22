@@ -39,3 +39,61 @@ export const FAQ: { q: string; a: string }[] = [
   { q: "Who are the other firms?", a: "Every market has 8 firms. Any spots not taken by student teams are AI rivals. They follow the same rules and the same market model; some are premium, some low-cost, some copy the leader. They get sharper as the game goes on." },
   { q: "What are market events?", a: "From Round 3, events like a chip shortage or a privacy scare may hit the market. They'll be announced in the round briefing. (Coming later in the term.)" },
 ];
+
+/** Fuller descriptions of each research study, shown on the Research screen. Edit freely. */
+export const STUDY_INFO: Record<string, { answers: string; contents: string; when: string; concept: string }> = {
+  survey: {
+    answers: "How big is each buyer group, and roughly what does each one want?",
+    contents: "One table for the 5 segments (all regions combined): approximate buyers per round, the typical price paid and the top features each segment wants.",
+    when: "Practice round, before you write your first product briefs. It's free, so every team should get it.",
+    concept: "Market segmentation: dividing a market into groups of buyers with different needs.",
+  },
+  needs: {
+    answers: "Which features does each segment care about most, and which ad messages will land with them?",
+    contents: "Tables of importance scores by segment for every sensor and every component (chip, form, battery, display, materials, water resistance, privacy), plus interest in a premium app plan and which ad claims each segment responds to.",
+    when: "Before you brief a product (Practice, or Round 3 for a third product), and when choosing ad claims.",
+    concept: "Customer needs and product-market fit: designing what a target segment values, not everything.",
+  },
+  potential: {
+    answers: "How many buyers will each segment have next round, in each region?",
+    contents: "A table of expected units next round for every segment and region, accurate to about 5%.",
+    when: "Before you set your sales forecast and production, and when deciding which region to enter next.",
+    concept: "Market sizing and demand forecasting.",
+  },
+  price: {
+    answers: "What do typical buyers expect to pay, and what is the most almost anyone will pay?",
+    contents: "For each segment and region: the typical price and the price ceiling.",
+    when: "Before you set prices (from Round 1), and when you plan a Good/Better/Best price ladder.",
+    concept: "Value-based pricing, reference prices and price sensitivity.",
+  },
+  media: {
+    answers: "Where does each segment shop, and which media reach it best?",
+    contents: "Two tables: the share of each segment buying in each sales channel, and how well digital, search and traditional media reach each segment (1.0 = average).",
+    when: "Before choosing channels in a region and splitting promotion across media.",
+    concept: "Channel strategy and media planning: reaching your target where it already is.",
+  },
+  awareness: {
+    answers: "How many buyers know each of your products after last round?",
+    contents: "Awareness of each of your products in each region and segment.",
+    when: "From Round 2, to check whether promotion is working and where to spend more or less.",
+    concept: "The awareness stage of the purchase funnel and advertising carry-over.",
+  },
+  satisfaction: {
+    answers: "How happy are your buyers after they purchase?",
+    contents: "Satisfaction for each of your products after last round, compared with the industry average. Fit, fair prices, honest ads and staying in stock all drive it.",
+    when: "From Round 2, especially after a price change, a stockout or a flagged ad claim.",
+    concept: "Customer satisfaction, loyalty and word of mouth.",
+  },
+  competitors: {
+    answers: "What do rivals sell, at what price, and how much of each segment did they win?",
+    contents: "Every firm's products, tiers and prices by region, each firm's share of units by segment, and estimated promotion spending.",
+    when: "From Round 2 (after rivals have launched), before repositioning or changing price.",
+    concept: "Competitive analysis and positioning against rivals.",
+  },
+  partners: {
+    answers: "What margin does each channel partner keep, and how close are you to better terms?",
+    contents: "Starting margins and coverage for every channel, plus your own volume and current margin in each channel and region.",
+    when: "Once you are selling (Round 2 on), to decide where to concentrate volume and earn leverage.",
+    concept: "Channel economics, partner margins and bargaining power.",
+  },
+};
