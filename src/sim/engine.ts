@@ -487,7 +487,7 @@ export function processRound(input: ProcessInput): RoundResult {
         }
         const plan = d.plan[pid]?.[r];
         const lost = Math.max(0, Math.floor(want) - sold);
-        rep.supply.push({ productId: pid, region: r, forecast: Math.round(plan?.forecast ?? 0), produced: q, demand: Math.round(want), sold, lost, endInventory: 0 });
+        if (fs.regions[r] || q > 0 || stock > 0 || want > 0) rep.supply.push({ productId: pid, region: r, forecast: Math.round(plan?.forecast ?? 0), produced: q, demand: Math.round(want), sold, lost, endInventory: 0 });
         pUnits += sold;
       }
       ps.cumUnits += pProduced;

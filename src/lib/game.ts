@@ -287,6 +287,15 @@ async function runAndStore(g: GameRow, round: number, isRerun: boolean) {
     const edits = await one("select 1 from change_log where firm_id = $1 and round = $2 limit 1", [f.id, round]);
     if (!edits) carried.add(f.id);
   }
+  // Teams appear under the company name they chose on the Strategy screen.
+  for (const f of firms.filter((x) => !x.is_ai)) {
+    const name = studentDecisions[f.id]?.strategy.companyName?.trim();
+    if (name && name !== f.name) {
+      await q("update firms set name = $1 where id = $2", [name.slice(0, 40), f.id]);
+      f.name = name.slice(0, 40);
+      metas.find((m) => m.id === f.id)!.name = f.name;
+    }
+  }
   const result = runRound({ round, seed: g.seed, firms: metas, prevResult, studentDecisions, carriedForward: carried, settings: settingsOf(g) });
   const json = JSON.stringify(result);
   if (isRerun) await q("update results set data = $1, processed_at = now(), run_count = run_count + 1 where game_id = $2 and round = $3", [json, g.id, round]);
