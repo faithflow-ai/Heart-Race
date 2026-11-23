@@ -13,10 +13,12 @@ import {
   SEGMENTS,
   SENSORS,
   STUDIES,
+  TONES,
   type SegmentId,
   type StudyId,
+  type ToneId,
 } from "./config";
-import { SEGMENT_PROFILES } from "./market";
+import { CHANNEL_PUSH, REGION_PROFILES, SEGMENT_PROFILES, TRADE_PROMO } from "./market";
 import { baseDemand, channelMargin, marginCut, maxPrice, refPrice } from "./engine";
 import { regionIds } from "./product";
 import type { FirmMeta, RoundResult } from "./types";
@@ -80,12 +82,24 @@ export function generateStudy(study: StudyId, ctx: { round: number; firmId: stri
             ]),
           })),
           {
-            title: "Premium app plan and ad messages",
-            columns: ["Segment", "Premium app plan", "Messages that resonate"],
+            title: "Premium app plan, ad messages and campaign tone",
+            columns: ["Segment", "Premium app plan", "Messages that resonate", "Tones that land best", "Tones that fall flat"],
             rows: SEGMENTS.map((s) => {
               const p = SEGMENT_PROFILES[s.id];
-              return [s.name, p.wants.subscription >= 0.6 ? "Valued" : p.wants.subscription >= 0.2 ? "Some interest" : "Resisted", p.caresAbout.map((c) => CLAIMS[c].name).join(", ")];
+              const tones = (Object.keys(p.toneFit) as ToneId[]).sort((a, b) => p.toneFit[b] - p.toneFit[a]);
+              return [
+                s.name,
+                p.wants.subscription >= 0.6 ? "Valued" : p.wants.subscription >= 0.2 ? "Some interest" : "Resisted",
+                p.caresAbout.map((c) => CLAIMS[c].name).join(", "),
+                tones.filter((t) => p.toneFit[t] >= 0.75).map((t) => TONES[t].name).join(", "),
+                tones.filter((t) => p.toneFit[t] <= 0.3).map((t) => TONES[t].name).join(", ") || "None in particular",
+              ];
             }),
+          },
+          {
+            title: "Ideal product, in one line (the top choice in each area, ignoring cost)",
+            columns: ["Segment", "Ideal product"],
+            rows: SEGMENTS.map((s) => [s.name, idealLine(s.id)]),
           },
         ],
       };
@@ -123,17 +137,21 @@ export function generateStudy(study: StudyId, ctx: { round: number; firmId: stri
       return {
         study,
         title,
-        intro: "Where each segment shops, and which media reach it best (1.0 = average).",
+        intro: "How well each advertising medium reaches each segment (1.0 = average). Where each segment shops is in the Channel partner survey.",
         tables: [
-          {
-            title: "Where buyers shop (share of segment)",
-            columns: ["Channel", ...SEGMENTS.map((s) => s.name)],
-            rows: CHANNELS.map((c) => [c.name, ...SEGMENTS.map((s) => pct(roundTo(SEGMENT_PROFILES[s.id].channelMix[c.id] ?? 0, 0.05)))]),
-          },
           {
             title: "Media reach",
             columns: ["Medium", ...SEGMENTS.map((s) => s.name)],
-            rows: (["digital", "search", "traditional"] as const).map((m) => [m === "digital" ? "Digital & social" : m === "search" ? "Search" : "Traditional", ...SEGMENTS.map((s) => SEGMENT_PROFILES[s.id].mediaReach[m].toFixed(1))]),
+            rows: (["digital", "search", "traditional"] as const).map((m) => [m === "digital" ? "Digital & social" : m === "search" ? "Search" : "Traditional media", ...SEGMENTS.map((s) => SEGMENT_PROFILES[s.id].mediaReach[m].toFixed(1))]),
+          },
+          {
+            title: "How to use this",
+            columns: ["Note"],
+            rows: [
+              ["A reach of 1.5 means each dollar in that medium reaches about 1.5 times as many of these buyers as an average medium would."],
+              ["Advertising builds awareness with diminishing returns, and about two-thirds of awareness carries into the next round."],
+              ["Trade promotion isn't advertising: it pays partners to push your brand in their stores. See the Channel partner survey for which partners respond."],
+            ],
           },
         ],
       };
@@ -191,30 +209,104 @@ export function generateStudy(study: StudyId, ctx: { round: number; firmId: stri
       return { study, title, intro: "What your rivals sell, at what price, and how much of each segment they won last round.", tables };
     }
     case "partners": {
-      const fs = ctx.latest?.state.firms[ctx.firmId];
+      const latest = ctx.latest;
+      const fs = latest?.state.firms[ctx.firmId];
+      const regName = (r: string) => REGIONS.find((x) => x.id === r)!.name;
+      const chName = (c: string) => CHANNELS.find((x) => x.id === c)!.name;
+      const pushWord = (k: number) => (k === 0 ? "None (no partner)" : k >= 1.25 ? "High" : k >= 0.85 ? "Medium" : "Low");
+      const inRegions = (c: string) => regionIds.filter((r) => (REGION_PROFILES[r].channels as string[]).includes(c));
+      const tables: ReportTable[] = [];
+      for (const r of regionIds) {
+        const here = REGION_PROFILES[r].channels;
+        tables.push({
+          title: `Where each segment shops: ${regName(r)}`,
+          columns: ["Channel", ...SEGMENTS.map((s) => s.name)],
+          rows: CHANNELS.map((c) => [
+            c.name,
+            ...SEGMENTS.map((s) => {
+              if (!here.includes(c.id)) return "Not in region";
+              const mix = SEGMENT_PROFILES[s.id].channelMix;
+              const tot = here.reduce((a, ch) => a + (mix[ch] ?? 0), 0) || 1;
+              return pct(roundTo((mix[c.id] ?? 0) / tot, 0.05));
+            }),
+          ]),
+        });
+      }
+      tables.push({
+        title: "Partner reach and willingness to push",
+        columns: ["Channel", "Partner margin", "Reach of its shoppers", "Responds to trade promotion", "Good response from about", "Regions"],
+        rows: CHANNELS.map((c) => [
+          c.name,
+          c.id === "online" ? `0% (you pay ${pct(CHANNEL_TERMS.online.fulfillmentCost ?? 0)} fulfillment)` : pct(CHANNEL_TERMS[c.id].margin),
+          pct(CHANNEL_TERMS[c.id].coverage),
+          pushWord(CHANNEL_PUSH[c.id]),
+          CHANNEL_PUSH[c.id] > 0 ? `$${roundTo(TRADE_PROMO.halfSaturationSpend, 10_000).toLocaleString()} per product per region` : "–",
+          inRegions(c.id).length === regionIds.length ? "All" : inRegions(c.id).map(regName).join(", "),
+        ]),
+      });
+      if (latest && latest.round >= 1) {
+        tables.push({
+          title: `Who's on the shelf (${latest.round === 7 ? "Final" : "Round " + latest.round})`,
+          columns: ["Channel", ...REGIONS.map((r) => r.name)],
+          rows: CHANNELS.map((c) => [
+            c.name,
+            ...regionIds.map((r) => {
+              const names = ctx.firms.filter((f) => f.id !== ctx.firmId && (latest.state.firms[f.id]?.channelsOpen[r] ?? []).includes(c.id)).map((f) => f.name);
+              return names.length ? `${names.length} rival${names.length > 1 ? "s" : ""}: ${names.join(", ")}` : "No rivals";
+            }),
+          ]),
+        });
+      } else tables.push({ title: "Who's on the shelf", columns: ["Note"], rows: [["No firm is selling yet. Buy this study after Round 1 to see which rivals each partner carries."]] });
+      const open = fs ? regionIds.flatMap((r) => (fs.channelsOpen[r] ?? []).map((ch) => ({ r, ch }))) : [];
+      tables.push({
+        title: `Your volume and leverage (cuts of ${Math.round(LEVERAGE.cutPerTier * 100)} points at ${LEVERAGE.tiers.map((t) => t.toLocaleString()).join(", ")} units, up to ${Math.round(LEVERAGE.maxCut * 100)})`,
+        columns: ["Region", "Channel", "Units to date", "Margin cut", "Margin now", "Units to next cut"],
+        rows:
+          fs && open.length
+            ? open.map(({ r, ch }) => {
+                const u = fs.channelUnits[r]?.[ch] ?? 0;
+                const next = LEVERAGE.tiers.find((t) => t > u);
+                return [regName(r), chName(ch), Math.round(u).toLocaleString(), pct(marginCut(u)), pct(channelMargin(fs, r, ch)), next && CHANNEL_TERMS[ch].margin > 0 ? Math.round(next - u).toLocaleString() : "–"];
+              })
+            : [["You aren't selling through any channel yet", "", "", "", "", ""]],
+      });
+      tables.push({
+        title: "What a $100 sale pays you, by channel (starting terms, before any leverage)",
+        columns: ["Channel", "Partner keeps", "Fulfillment", "You receive"],
+        rows: CHANNELS.map((c) => {
+          const m = CHANNEL_TERMS[c.id].margin * 100;
+          const f = (CHANNEL_TERMS[c.id].fulfillmentCost ?? 0) * 100;
+          return [c.name, `$${m.toFixed(0)}`, `$${f.toFixed(0)}`, `$${(100 - m - f).toFixed(0)}`];
+        }),
+      });
       return {
         study,
         title,
-        intro: `Partners keep a margin from the retail price. As your volume in a channel and region passes ${LEVERAGE.tiers.map((t) => t.toLocaleString()).join(", ")} units, you can negotiate ${Math.round(LEVERAGE.cutPerTier * 100)} points off per tier (up to ${Math.round(LEVERAGE.maxCut * 100)}).`,
-        tables: [
-          {
-            title: "Starting terms",
-            columns: ["Channel", "Partner margin", "Reach", "One-time setup fee"],
-            rows: CHANNELS.map((c) => [c.name, c.id === "online" ? `0% (you pay ${pct(CHANNEL_TERMS.online.fulfillmentCost ?? 0)} fulfillment)` : pct(CHANNEL_TERMS[c.id].margin), pct(CHANNEL_TERMS[c.id].coverage), `$${CHANNEL_TERMS[c.id].setupFee.toLocaleString()}`]),
-          },
-          {
-            title: "Your volume and current margin",
-            columns: ["Region", "Channel", "Units to date", "Margin cut", "Margin now"],
-            rows: fs
-              ? regionIds.flatMap((r) =>
-                  (fs.channelsOpen[r] ?? []).map((ch) => [REGIONS.find((x) => x.id === r)!.name, CHANNELS.find((c) => c.id === ch)!.name, Math.round(fs.channelUnits[r]?.[ch] ?? 0).toLocaleString(), pct(marginCut(fs.channelUnits[r]?.[ch] ?? 0)), pct(channelMargin(fs, r, ch))]),
-                )
-              : [],
-          },
-        ],
+        intro: "Where your buyers shop in each region, which partners reach them, how hard each type of partner pushes your brand when you pay for trade promotion, and the leverage you've built. Distributor and local-partner entry modes add a few points of margin on top of these terms.",
+        tables,
       };
     }
   }
   void segName;
   return { study, title, intro: "", tables: [] };
+}
+
+/** One line naming the top choice in each design area for a segment. */
+function idealLine(seg: SegmentId): string {
+  const w = SEGMENT_PROFILES[seg].wants;
+  const top = <K extends string>(o: Record<K, number>) => (Object.keys(o) as K[]).sort((a, b) => o[b] - o[a])[0];
+  const opt = (area: keyof typeof COMPONENTS, k: string) => (COMPONENTS[area].options as Record<string, { name: string }>)[k].name;
+  const sensors = (Object.keys(w.sensors) as (keyof typeof SENSORS)[]).filter((k) => w.sensors[k] >= 0.7).map((k) => SENSORS[k].name);
+  const parts = [
+    opt("form", top(w.form)),
+    `${opt("display", top(w.display)).toLowerCase()} display`,
+    `${opt("battery", top(w.battery))} battery`,
+    opt("material", top(w.material)).toLowerCase(),
+    opt("water", top(w.water)).toLowerCase(),
+    top(w.privacy) === "medical" ? "medical-grade privacy" : "standard privacy",
+    `${opt("chip", top(w.chip)).toLowerCase()} chip`,
+    sensors.length ? `sensors: ${sensors.join(", ")}` : "",
+    w.subscription >= 0.6 ? "premium app plan valued" : w.subscription < 0.2 ? "no app fee" : "",
+  ].filter(Boolean);
+  return parts.join(", ") + ".";
 }

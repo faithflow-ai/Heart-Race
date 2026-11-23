@@ -1,7 +1,7 @@
 /**
  * Demo class: one click builds a separate, clearly labeled sample class with
  * fake students on teams, sample decisions and three processed rounds
- * (Practice, Round 1, Round 2), so the instructor can review every screen
+ * (Practice, Round 1, Round 2), plus sample creative work and grades, so the instructor can review every screen
  * that needs data. Deleting it removes the class and its fake accounts.
  * It never touches any other class.
  */
@@ -151,7 +151,9 @@ export async function createDemoGame(instructor: User): Promise<GameRow> {
         }
       }
     }
+    if (round === 1) await sampleCreative(firms.map((f) => f.id), byFirm, "before");
     await processCurrentRound((await getGame(g.id))!);
+    if (round === 1) await sampleCreative(firms.map((f) => f.id), byFirm, "after");
   }
   // Two teams have marked themselves ready for the open round, so the class screen shows both states.
   for (const f of firms.slice(0, 2)) {
@@ -165,6 +167,31 @@ export async function createDemoGame(instructor: User): Promise<GameRow> {
   // Leave the demo paused: nothing processes until the instructor clicks Run or Start.
   await q("update games set status = 'setup', deadline = null where id = $1", [g.id]);
   return (await getGame(g.id))!;
+}
+
+/**
+ * Sample creative work for the Round 1 launch milestone: three teams submit links (placeholders on
+ * example.com) before the Round 1 deadline, and two of them are graded afterwards, so the
+ * Creative tab, the grading screen and the creative boost in Round 2 all have something to show.
+ */
+async function sampleCreative(firmIds: string[], byFirm: Record<string, User[]>, phase: "before" | "after") {
+  const grades = [
+    { scores: { fit: 5, clarity: 4, creativity: 4, consistency: 4, craft: 3 }, feedback: "Strong insight about training data and a clear single message. The search ad runs over the character limit; tighten it." },
+    { scores: { fit: 3, clarity: 2, creativity: 3, consistency: 3, craft: 3 }, feedback: "The brief names two segments and the posts try to talk to both, so the message gets lost. Pick one buyer and one promise." },
+  ];
+  for (let t = 0; t < Math.min(3, firmIds.length); t++) {
+    const fid = firmIds[t];
+    if (phase === "before") {
+      const base = `https://example.com/demo/team-${t + 1}`;
+      const links = { brief: `${base}/brief`, social1: `${base}/post-1`, social2: `${base}/post-2`, social3: `${base}/post-3`, search: `${base}/search-ad` };
+      await q(
+        "insert into creative_submissions (firm_id, milestone, links, note, submitted_by, submitted_at) values ($1,'launch',$2,$3,$4, now() - interval '3 days') on conflict do nothing",
+        [fid, JSON.stringify(t === 2 ? { brief: links.brief, social1: links.social1 } : links), t === 2 ? "We'll add the rest before the deadline." : "", byFirm[fid][t % 3].id],
+      );
+    } else if (t < 2) {
+      await q("update creative_submissions set scores = $1, feedback = $2, graded_at = now() - interval '2 days' where firm_id = $3 and milestone = 'launch'", [JSON.stringify(grades[t].scores), grades[t].feedback, fid]);
+    }
+  }
 }
 
 /** A few change-log lines per round, by different teammates, so the log and its export have content. */

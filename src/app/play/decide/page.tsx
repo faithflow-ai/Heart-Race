@@ -16,13 +16,18 @@ import {
   ROUNDS,
   SEGMENTS,
   SENSORS,
+  TONES,
   UNLOCKS,
   type ChannelId,
   type ClaimId,
+  type MediaId,
   type RegionId,
   type SegmentId,
   type SensorId,
+  type ToneId,
 } from "@/sim/config";
+import { PromoSummary } from "@/components/PromoSummary";
+import { proForma } from "@/sim/proforma";
 import { LEARN } from "@/sim/content";
 import { newProduct, quote, supportedClaims } from "@/sim/product";
 import type { FirmDecision, ProductSpec } from "@/sim/types";
@@ -506,50 +511,84 @@ function Pricing() {
   const d = t.decision;
   const prods = sellable(t);
   const regions = activeRegions(t);
-  const mixTotal = MEDIA.reduce((a, m) => a + (d.mediaMix[m.id] ?? 0), 0);
-  const promo = prods.reduce((a, p) => a + regions.reduce((b, r) => b + (d.plan[p.id]?.[r.id]?.promotion ?? 0), 0), 0);
+  const cell = (pid: string, r: RegionId) => d.plan[pid]?.[r];
+  const spend = (pid: string, r: RegionId, m: MediaId) => Math.max(0, Number(cell(pid, r)?.media?.[m]) || 0);
+  const available = t.budget.available - t.budget.research;
+  const total = prods.reduce((a, p) => a + regions.reduce((b, r) => b + MEDIA.reduce((c, m) => c + spend(p.id, r.id, m.id), 0), 0), 0);
   return (
     <>
       <Learn id="pricing" />
       {!prods.length && <div className="notice warn">You have no products on the market this round. Products are ready one round after engineering accepts the brief.</div>}
       {!regions.length && <div className="notice warn">Enter at least one region on the Markets & channels screen first.</div>}
-      <div className="panel">
-        <h3 style={{ marginTop: 0 }}>Promotion split across media</h3>
-        <div className="grid4">
-          {MEDIA.map((m) => (
-            <div key={m.id}>
-              <label>{m.name} (%)</label>
-              <NumIn value={d.mediaMix[m.id]} onChange={(v) => set(`mediaMix.${m.id}`, v ?? 0)} />
-            </div>
-          ))}
-        </div>
-        <p className={`small ${mixTotal === 100 ? "muted" : ""}`} style={mixTotal === 100 ? {} : { color: "var(--bad)" }}>
-          Total {mixTotal}% {mixTotal !== 100 && "(should be 100%; the split is scaled to fit)"}. Trade promotion pays partners to push your brand and lifts channel reach; the rest builds awareness.
-        </p>
+      <div className="notice info small">
+        Enter promotion in <b>dollars for each medium</b>, for each product in each region. <b>Digital & social, Search and Traditional media</b> are consumer ads (pull): they build awareness in every segment, most in the segments each medium reaches best.{" "}
+        <b>Trade promotion</b> pays your channel partners for displays, shelf space and staff incentives (push): buyers who shop there meet your brand in the store. It works only through partners, not your own website. You don&apos;t have to spend the whole budget; whatever is left carries over.
       </div>
       {prods.map((p) => {
         const truthful = supportedClaims(p);
+        const camp = p.campaign ?? { message: "", tone: "", segment: "" };
+        const rowTotal = (r: RegionId) => MEDIA.reduce((a, m) => a + spend(p.id, r, m.id), 0);
         return (
           <div className="panel" key={p.id}>
             <h3 style={{ marginTop: 0 }}>{p.name} <span className="muted small">({p.tier}, unit cost about ${t.committed.find((c) => c.id === p.id)?.unitCost.toFixed(2)})</span></h3>
-            <table>
-              <thead>
-                <tr><th>Region</th><th className="num">List price ($)</th><th className="num">Promotion ($)</th></tr>
-              </thead>
-              <tbody>
-                {regions.map((r) => {
-                  const pl = d.plan[p.id]?.[r.id];
-                  return (
+            <div className="scroll">
+              <table className="media-table">
+                <thead>
+                  <tr>
+                    <th>Region</th>
+                    <th className="num">List price ($)</th>
+                    {MEDIA.map((m) => <th key={m.id} className="num">{m.name} ($)</th>)}
+                    <th className="num">Promotion total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {regions.map((r) => (
                     <tr key={r.id}>
                       <td>{r.name}</td>
-                      <td style={{ width: 180 }}><NumIn value={pl?.price ?? null} step={1} onChange={(v) => set(`plan.${p.id}.${r.id}.price`, v ?? 0)} /></td>
-                      <td style={{ width: 200 }}><NumIn value={pl?.promotion ?? null} step={10000} onChange={(v) => set(`plan.${p.id}.${r.id}.promotion`, v ?? 0)} /></td>
+                      <td style={{ minWidth: 100 }}><NumIn value={cell(p.id, r.id)?.price ?? null} step={1} onChange={(v) => set(`plan.${p.id}.${r.id}.price`, v ?? 0)} /></td>
+                      {MEDIA.map((m) => (
+                        <td key={m.id} style={{ minWidth: 110 }}>
+                          <NumIn value={cell(p.id, r.id)?.media?.[m.id] ?? null} step={5000} onChange={(v) => set(`plan.${p.id}.${r.id}.media.${m.id}`, Math.max(0, v ?? 0))} />
+                        </td>
+                      ))}
+                      <td className="num"><b>{money(rowTotal(r.id))}</b></td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <label>Ad claims (pick up to 3, most important first)</label>
+                  ))}
+                </tbody>
+                {regions.length > 1 && (
+                  <tfoot>
+                    <tr>
+                      <td colSpan={2}><b>All regions</b></td>
+                      {MEDIA.map((m) => <td key={m.id} className="num">{money(regions.reduce((a, r) => a + spend(p.id, r.id, m.id), 0))}</td>)}
+                      <td className="num"><b>{money(regions.reduce((a, r) => a + rowTotal(r.id), 0))}</b></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+
+            <h4 style={{ marginBottom: 4 }}>Campaign</h4>
+            <p className="small muted" style={{ marginTop: 0 }}>One campaign per product: who it speaks to, in what tone, with one main message. It shapes how well your ads work with that segment. It carries forward until you change it. Your creative work (Creative tab) should bring this campaign to life.</p>
+            <div className="grid2">
+              <div>
+                <label>Campaign target segment</label>
+                <select value={camp.segment} onChange={(e) => set(`products.#${p.id}.campaign.segment`, e.target.value)}>
+                  <option value="">Choose a segment…</option>
+                  {SEGMENTS.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Tone</label>
+                <select value={camp.tone} onChange={(e) => set(`products.#${p.id}.campaign.tone`, e.target.value)}>
+                  <option value="">Choose a tone…</option>
+                  {(Object.keys(TONES) as ToneId[]).map((k) => <option key={k} value={k}>{TONES[k].name}</option>)}
+                </select>
+              </div>
+            </div>
+            <label>Main message (one sentence a buyer should remember)</label>
+            <textarea value={camp.message} onChange={(e) => set(`products.#${p.id}.campaign.message`, e.target.value)} style={{ minHeight: 60 }} placeholder="e.g. Peace of mind on every wrist: CareBand calls family the moment a fall happens." />
+
+            <label style={{ marginTop: 10 }}>Ad claims (pick up to 3, most important first)</label>
             {(Object.keys(CLAIMS) as ClaimId[]).map((c) => {
               const on = p.claims.includes(c);
               const unsupported = c !== "price" && !truthful.has(c);
@@ -569,7 +608,8 @@ function Pricing() {
           </div>
         );
       })}
-      <p className="muted">Promotion planned: <b>{money(promo)}</b> · marketing budget available: {money(t.budget.available - t.budget.research)}</p>
+      {prods.length > 0 && regions.length > 0 && <PromoSummary d={d} products={prods} regions={regions.map((r) => r.id)} available={available} />}
+      {!(prods.length > 0 && regions.length > 0) && <p className="muted">Promotion planned: <b>{money(total)}</b> · marketing budget available: {money(available)}</p>}
     </>
   );
 }
@@ -703,14 +743,15 @@ function Review() {
           <p className="small muted">Production, holding costs, channel setup and overhead also come from capital; sales revenue flows back in.</p>
         </div>
       </div>
+      {round >= 1 && <ProFormaPanel />}
       {round >= 1 && (
         <div className="panel">
           <div className="row">
-            <h3 style={{ margin: 0 }}>Projected results</h3>
+            <h3 style={{ margin: 0 }}>Market simulation (optional)</h3>
             <span className="spacer" />
             <button onClick={project} disabled={busy}>{busy ? "Projecting…" : "Run projection"}</button>
           </div>
-          <p className="small muted">An estimate that assumes every rival repeats its last-round decisions. Real results will differ.</p>
+          <p className="small muted">A different estimate from the projected profit and loss above: it runs the market model, assuming every rival repeats its last-round decisions. Real results will differ.</p>
           {err && <div className="notice bad">{err}</div>}
           {proj && (
             <>
@@ -759,6 +800,48 @@ function Review() {
   );
 }
 
+function ProFormaPanel() {
+  const { team } = useTeam();
+  const t = team!;
+  const b = t.budget;
+  const pf = proForma({
+    round: t.game.round,
+    decision: t.decision,
+    unitCost: Object.fromEntries(t.committed.map((c) => [c.id, c.unitCost])),
+    sellable: sellable(t).map((p) => p.id),
+    regionsEntered: t.regionsEntered as Parameters<typeof proForma>[0]["regionsEntered"],
+    channelsOpen: t.channelsOpen as Parameters<typeof proForma>[0]["channelsOpen"],
+    committed: t.committed.map((c) => c.id),
+    capital: b.capital,
+    marketingAvailable: b.available,
+    capacity: b.capacity,
+    inventory: t.inventory as Parameters<typeof proForma>[0]["inventory"],
+  });
+  return (
+    <div className="panel">
+      <h3 style={{ marginTop: 0 }}>Projected profit and loss (pro forma)</h3>
+      <p className="small muted" style={{ marginTop: 0 }}><b>Based on your forecast and decisions, not a prediction of the market.</b> It assumes you sell exactly your forecast (up to the units you have), split evenly across each region&apos;s channels. It updates as you edit. After the round, Results shows projected vs. actual.</p>
+      <div className="grid2">
+        <table>
+          <tbody>
+            {pf.lines.map((l) => (
+              <tr key={l.key} style={l.key === "revenue" || l.key === "operatingProfit" ? { fontWeight: 600 } : undefined}>
+                <td>{l.label}</td>
+                <td className="num" style={l.value < 0 ? { color: "var(--muted)" } : undefined}>{money(l.value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div>
+          <div className="stat"><div className="k">Projected operating profit</div><div className="v" style={{ color: pf.operatingProfit < 0 ? "var(--bad)" : undefined }}>{money(pf.operatingProfit, true)}</div><div className="s">on {num(pf.units)} units</div></div>
+          <div className="stat" style={{ marginTop: 10 }}><div className="k">Projected company capital at the end of the round</div><div className="v">{money(pf.capitalEnd, true)}</div></div>
+          <div className="stat" style={{ marginTop: 10 }}><div className="k">Marketing budget left after this round</div><div className="v" style={{ color: pf.marketingEnd < 0 ? "var(--bad)" : undefined }}>{money(pf.marketingEnd, true)}</div></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Checklist() {
   const { team } = useTeam();
   const t = team!;
@@ -791,8 +874,10 @@ function Checklist() {
         if (!pl?.production && !(t.inventory[p.id]?.[r.id] ?? 0)) add(`No production planned for ${p.name} in ${r.name}`, "production");
       }
     if (prods.length && regions.length && !t.budget.promotion) add("No promotion planned", "pricing");
-    const mix = MEDIA.reduce((a, m) => a + (d.mediaMix[m.id] ?? 0), 0);
-    if (mix !== 100) add(`Promotion split across media adds up to ${mix}%, not 100%`, "pricing");
+    for (const p of prods) {
+      if (!p.campaign?.segment || !p.campaign?.tone) add(`Campaign for ${p.name} has no target segment or tone`, "pricing");
+      else if (!p.campaign.message.trim()) add(`Campaign for ${p.name} has no main message`, "pricing");
+    }
     if (t.budget.remaining < 0) add("Marketing spending is over budget (it will be scaled down at the deadline)", "pricing");
   }
   if (round >= UNLOCKS.goals && Object.values(d.goals).some((v) => v === null)) add("Some numeric goals are blank", "strategy");

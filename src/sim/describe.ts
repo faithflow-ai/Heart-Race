@@ -3,7 +3,7 @@
  * sentence, e.g. "changed target segments from none to Everyday Wellness".
  * Used by the team's Change log screen and the instructor's CSV export.
  */
-import { CHANNELS, CLAIMS, COMPONENTS, ENTRY_MODES, MEDIA, REGIONS, SEGMENTS, SENSORS, STUDIES } from "./config";
+import { CHANNELS, CLAIMS, COMPONENTS, ENTRY_MODES, MEDIA, REGIONS, SEGMENTS, SENSORS, STUDIES, TONES } from "./config";
 
 type Names = Record<string, string>;
 
@@ -118,6 +118,13 @@ export function describeChange(path: string, oldV: unknown, newV: unknown, names
       if (b === "commission") return newV ? `accepted engineering's quote for ${n}` : `withdrew acceptance of the quote for ${n}`;
       if (b === "retire") return newV ? `marked ${n} to retire at the deadline` : `kept ${n} on the market`;
       if (b === "name") return `renamed ${text(oldV)} to ${text(newV)}`;
+      if (b === "campaign") {
+        const c = segs[3];
+        if (c === "message") return oldV ? `edited the campaign message for ${n}: ${text(newV)}` : `wrote the campaign message for ${n}: ${text(newV)}`;
+        if (c === "tone") return fromTo(`the campaign tone for ${n}`, TONES[String(oldV) as keyof typeof TONES]?.name ?? "none", TONES[String(newV) as keyof typeof TONES]?.name ?? "none");
+        if (c === "segment") return fromTo(`the campaign's target segment for ${n}`, SEG[String(oldV)] ?? "none", SEG[String(newV)] ?? "none");
+        return `changed the campaign for ${n}`;
+      }
       return fromTo(`the ${PRODUCT_LABELS[b] ?? b} of ${n}`, componentName(b, oldV), componentName(b, newV));
     }
   }
@@ -126,6 +133,9 @@ export function describeChange(path: string, oldV: unknown, newV: unknown, names
     if (b === "enter") return newV ? `chose to enter ${r}` : `dropped the plan to enter ${r}`;
     if (b === "entryMode") return fromTo(`the entry mode for ${r}`, ENTRY_MODES[String(oldV) as keyof typeof ENTRY_MODES]?.name ?? "none", ENTRY_MODES[String(newV) as keyof typeof ENTRY_MODES]?.name ?? String(newV));
     if (b === "channels") return fromTo(`channels in ${r}`, list(oldV, CH), list(newV, CH));
+  }
+  if (head === "plan" && a && b && c === "media" && segs[4]) {
+    return fromTo(`${MED[segs[4]] ?? segs[4]} spending for ${pname(a)} in ${REG[b] ?? b}`, numText(oldV, "money"), numText(newV, "money"));
   }
   if (head === "plan" && a && b && c) {
     const kind = c === "price" || c === "promotion" ? "money" : "units";

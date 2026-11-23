@@ -20,8 +20,8 @@ import {
   type ScoreKey,
   type SegmentId,
 } from "./config";
-import { AWARENESS, DEMAND_MODEL, REGION_PROFILES, SATISFACTION, SEGMENT_PROFILES, TRADE_PROMO } from "./market";
-import { claimIsTrue, normalizeDecision, quote, regionIds, specProblems, unitCostAt } from "./product";
+import { AWARENESS, CAMPAIGN, CHANNEL_PUSH, DEMAND_MODEL, REGION_PROFILES, SATISFACTION, SEGMENT_PROFILES, TRADE_PROMO } from "./market";
+import { cellPromo, claimIsTrue, emptyMedia, normalizeDecision, quote, regionIds, specProblems, unitCostAt } from "./product";
 import { mulberry32, hashString } from "./rng";
 import { fit } from "./fit";
 import type {
@@ -31,6 +31,8 @@ import type {
   FirmState,
   GameState,
   PnL,
+  ProductSpec,
+  PromoResult,
   RoundResult,
   ScoreBreakdown,
   ShareRow,
@@ -107,34 +109,48 @@ export function channelMargin(state: FirmState, region: RegionId, ch: ChannelId)
   return Math.max(0, base + extra - cut);
 }
 
-function tradeBoost(tradeSpend: number) {
-  return TRADE_PROMO.maxBoost * (tradeSpend / (tradeSpend + TRADE_PROMO.halfSaturationSpend));
+/** In-store push a partner channel gives a product, from the trade promotion spent on it in that region. */
+export function channelPush(ch: ChannelId, tradeSpend: number): number {
+  if (tradeSpend <= 0 || CHANNEL_TERMS[ch].margin <= 0) return 0;
+  const p = TRADE_PROMO.maxPush * (CHANNEL_PUSH[ch] ?? 0) * (tradeSpend / (tradeSpend + TRADE_PROMO.halfSaturationSpend));
+  return Math.min(TRADE_PROMO.maxPushCap, p);
 }
 
-/** Share of a segment's buyers in a region who can find the product, and through which channels. */
+/**
+ * Share of a segment's buyers in a region who can find the product, and through which channels.
+ * Trade promotion widens stocking in partner channels; push[ch] is the in-store push in each.
+ */
 export function availability(
   state: FirmState,
   region: RegionId,
   seg: SegmentId,
   tradeSpend: number,
-): { total: number; byChannel: Partial<Record<ChannelId, number>> } {
+): { total: number; byChannel: Partial<Record<ChannelId, number>>; push: Partial<Record<ChannelId, number>> } {
   const mode = state.regions[region];
-  if (!mode) return { total: 0, byChannel: {} };
+  if (!mode) return { total: 0, byChannel: {}, push: {} };
   const chans = state.channelsOpen[region] ?? [];
   const mix = SEGMENT_PROFILES[seg].channelMix;
-  const boost = 1 + tradeBoost(tradeSpend);
   const byChannel: Partial<Record<ChannelId, number>> = {};
+  const push: Partial<Record<ChannelId, number>> = {};
   let total = 0;
   for (const ch of chans) {
     if (!REGION_PROFILES[region].channels.includes(ch)) continue;
     const share = mix[ch] ?? 0;
-    // Trade promotion only lifts partner channels.
-    const push = CHANNEL_TERMS[ch].margin > 0 ? boost : 1;
-    const a = share * Math.min(1, CHANNEL_TERMS[ch].coverage * ENTRY_MODES[mode].coverageBoost * push);
+    const p = channelPush(ch, tradeSpend);
+    push[ch] = p;
+    const a = share * Math.min(1, CHANNEL_TERMS[ch].coverage * ENTRY_MODES[mode].coverageBoost * (1 + TRADE_PROMO.stockLift * p));
     byChannel[ch] = a;
     total += a;
   }
-  return { total: Math.min(1, total), byChannel };
+  return { total: Math.min(1, total), byChannel, push };
+}
+
+/** How much a product's campaign multiplies its ads' effect in one segment. */
+export function campaignMultiplier(campaign: ProductSpec["campaign"] | undefined, seg: SegmentId, creativeBoost = 0): number {
+  if (!campaign || !campaign.tone) return CAMPAIGN.noCampaign;
+  const tf = SEGMENT_PROFILES[seg].toneFit[campaign.tone] ?? 0.5;
+  if (campaign.segment === seg) return CAMPAIGN.target + CAMPAIGN.toneWeight * tf + creativeBoost;
+  return CAMPAIGN.other + CAMPAIGN.otherToneWeight * tf;
 }
 
 function emptyPnl(): PnL {
@@ -171,6 +187,8 @@ export interface ProcessInput {
   carriedForward?: Set<string>;
   prevResult?: RoundResult | null;
   settings?: GameSettings;
+  /** Creative quality boost per firm (from the instructor's rubric grades), added to campaign effect in the campaign's segment. */
+  creativeBoost?: Record<string, number>;
 }
 
 const clone = <T>(x: T): T => structuredClone(x);
@@ -228,7 +246,7 @@ export function processRound(input: ProcessInput): RoundResult {
 
     // Promotion (charged to the marketing pot; scaled down if over budget).
     let promoAsked = 0;
-    for (const pid of Object.keys(d.plan)) for (const r of regionIds) promoAsked += Math.max(0, d.plan[pid]?.[r]?.promotion ?? 0);
+    for (const pid of Object.keys(d.plan)) for (const r of regionIds) promoAsked += cellPromo(d.plan[pid]?.[r]);
     const promoScale = promoAsked > fs.marketingPot ? fs.marketingPot / promoAsked : 1;
     if (promoScale < 1 && promoAsked > 0) notes.push(`Promotion was cut to ${Math.round(promoScale * 100)}% because it exceeded the marketing budget.`);
     (d as FirmDecision & { _promoScale?: number })._promoScale = round >= 1 ? promoScale : 0;
@@ -266,7 +284,7 @@ export function processRound(input: ProcessInput): RoundResult {
     for (const spec of d.products) {
       const existing = fs.products[spec.id];
       if (existing) {
-        existing.spec = { ...existing.spec, name: spec.name, claims: spec.claims.slice(0, 3), subscriptionPrice: spec.subscriptionPrice, retire: spec.retire };
+        existing.spec = { ...existing.spec, name: spec.name, claims: spec.claims.slice(0, 3), subscriptionPrice: spec.subscriptionPrice, retire: spec.retire, campaign: spec.campaign };
         if (spec.retire && !existing.retired) existing.retired = true;
         continue;
       }
@@ -352,8 +370,9 @@ export function processRound(input: ProcessInput): RoundResult {
       const fs = state.firms[f.id];
       const d = decisions[f.id];
       const scale = (d as FirmDecision & { _promoScale?: number })._promoScale ?? 1;
-      const mix = d.mediaMix;
-      const mixTotal = Math.max(1, mix.digital + mix.search + mix.traditional + mix.trade);
+      const boost = input.creativeBoost?.[f.id] ?? 0;
+      const promo: PromoResult[] = [];
+      fs.shelfAwareness = {};
       falseClaims[f.id] = {};
       for (const ps of Object.values(fs.products)) {
         if (ps.retired || ps.launchRound > round) continue;
@@ -361,17 +380,34 @@ export function processRound(input: ProcessInput): RoundResult {
         fs.awareness[pid] ??= {};
         for (const r of regionIds) {
           const plan = d.plan[pid]?.[r];
-          const promo = Math.max(0, plan?.promotion ?? 0) * scale;
-          const trade = (promo * mix.trade) / mixTotal;
-          const adSpend = promo - trade;
+          const media = { ...emptyMedia(), ...(plan?.media ?? {}) };
+          const spend = emptyMedia();
+          for (const m of Object.keys(spend) as (keyof typeof spend)[]) spend[m] = Math.max(0, Number(media[m]) || 0) * scale;
+          const trade = spend.trade;
           fs.awareness[pid][r] ??= {};
+          const pr: PromoResult = { productId: pid, region: r, spend, segments: {}, channels: {}, campaignSegment: ps.spec.campaign?.segment ?? "" };
           for (const s of segIds) {
             const reach = SEGMENT_PROFILES[s].mediaReach;
-            const weighted =
-              adSpend > 0 ? (adSpend * (mix.digital * reach.digital + mix.search * reach.search + mix.traditional * reach.traditional)) / Math.max(1, mix.digital + mix.search + mix.traditional) : 0;
+            const cm = campaignMultiplier(ps.spec.campaign, s, boost);
+            const parts = { digital: spend.digital * reach.digital * cm, search: spend.search * reach.search * cm, traditional: spend.traditional * reach.traditional * cm };
+            const weighted = parts.digital + parts.search + parts.traditional;
             const old = fs.awareness[pid][r]![s] ?? 0;
             const gain = AWARENESS.maxGainPerRound * (weighted / (weighted + AWARENESS.halfSaturationSpend));
-            fs.awareness[pid][r]![s] = Math.min(0.98, old * AWARENESS.retention + (1 - old * AWARENESS.retention) * gain);
+            const after = Math.min(0.98, old * AWARENESS.retention + (1 - old * AWARENESS.retention) * gain);
+            fs.awareness[pid][r]![s] = after;
+            const added = Math.max(0, after - old * AWARENESS.retention);
+            const share = (k: keyof typeof parts) => (weighted > 0 ? (added * parts[k]) / weighted : 0);
+            if (fs.regions[r] || weighted > 0) pr.segments[s] = { before: old, after, gain: added, byMedium: { digital: share("digital"), search: share("search"), traditional: share("traditional") }, campaign: cm };
+          }
+          if (fs.regions[r]) {
+            for (const ch of fs.channelsOpen[r] ?? []) {
+              if (CHANNEL_TERMS[ch].margin <= 0 || !REGION_PROFILES[r].channels.includes(ch)) continue;
+              const mode = fs.regions[r]!;
+              const base = Math.min(1, CHANNEL_TERMS[ch].coverage * ENTRY_MODES[mode].coverageBoost);
+              const p = channelPush(ch, trade);
+              pr.channels[ch] = { push: p, reachBase: base, reachNow: Math.min(1, base * (1 + TRADE_PROMO.stockLift * p)) };
+            }
+            promo.push(pr);
           }
           if (!fs.regions[r] || !plan || !(plan.price > 0)) continue;
           for (const s of segIds) {
@@ -379,7 +415,13 @@ export function processRound(input: ProcessInput): RoundResult {
             if (av.total <= 0) continue;
             const ft = fit(ps.spec, s);
             const pf = priceFactor(s, r, plan.price);
-            const aw = fs.awareness[pid][r]![s] ?? 0;
+            // Buyers who shop in a partner channel meet the brand at the shelf when trade promotion pays for push.
+            const adAw = fs.awareness[pid][r]![s] ?? 0;
+            const totA = Object.values(av.byChannel).reduce((a, b) => a + (b ?? 0), 0);
+            const aw = totA > 0
+              ? (Object.entries(av.byChannel) as [ChannelId, number][]).reduce((a, [ch, w]) => a + w * (adAw + (1 - adAw) * (av.push[ch] ?? 0)), 0) / totA
+              : adAw;
+            ((fs.shelfAwareness![pid] ??= {})[r] ??= {})[s] = aw;
             let claimF = 1;
             let lies = 0;
             for (const c of ps.spec.claims.slice(0, 3)) {
@@ -413,6 +455,7 @@ export function processRound(input: ProcessInput): RoundResult {
           }
         }
       }
+      reports[f.id].promo = promo;
     }
 
     // Split each segment-region's demand among reachable products.
@@ -720,7 +763,7 @@ export function targetAwareness(fs: FirmState, d: FirmDecision, round: number): 
       let best = 0;
       for (const ps of Object.values(fs.products)) {
         if (ps.retired || ps.launchRound > round) continue;
-        best = Math.max(best, fs.awareness[ps.spec.id]?.[r]?.[s] ?? 0);
+        best = Math.max(best, fs.awareness[ps.spec.id]?.[r]?.[s] ?? 0, fs.shelfAwareness?.[ps.spec.id]?.[r]?.[s] ?? 0);
       }
       sum += best;
       n++;

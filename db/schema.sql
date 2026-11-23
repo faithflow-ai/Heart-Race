@@ -95,3 +95,17 @@ create table if not exists password_resets (
   expires_at timestamptz not null,
   used_at timestamptz
 );
+
+-- Added Nov 2026: creative work (links) submitted at milestones, graded by the instructor with a rubric.
+create table if not exists creative_submissions (
+  firm_id text not null references firms(id) on delete cascade,
+  milestone text not null,
+  links jsonb not null default '{}'::jsonb,
+  note text not null default '',
+  submitted_by text,
+  submitted_at timestamptz,
+  scores jsonb,
+  feedback text not null default '',
+  graded_at timestamptz,
+  primary key (firm_id, milestone)
+);

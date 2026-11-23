@@ -28,6 +28,7 @@ export const GET = handle(async () => {
     // Accepted products (components locked) and what they cost now.
     committed: fs ? Object.values(fs.products).map((p) => ({ id: p.spec.id, launchRound: p.launchRound, retired: p.retired, unitCost: p.quotedUnitCost })) : [],
     regionsEntered: fs ? fs.regions : {},
+    channelsOpen: fs ? fs.channelsOpen : {},
     inventory: fs ? Object.fromEntries(Object.entries(fs.inventory).map(([pid, regs]) => [pid, Object.fromEntries(Object.entries(regs).map(([r, lots]) => [r, (lots ?? []).reduce((a, l) => a + l.units, 0)]))])) : {},
     processed: await processedRounds(game.id),
     research: reports.map((r) => ({ ...r, round: Number(r.round) })),

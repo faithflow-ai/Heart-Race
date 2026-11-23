@@ -5,7 +5,7 @@
  * Students never see these numbers directly; research studies reveal them in
  * rounded or descriptive form. This file is only loaded on the server.
  */
-import type { ChannelId, ClaimId, MediaId, RegionId, SegmentId, SensorId } from "./config";
+import type { ChannelId, ClaimId, MediaId, RegionId, SegmentId, SensorId, ToneId } from "./config";
 
 // ---------------------------------------------------------------------------
 // Segments (hidden preferences — students discover these through research)
@@ -39,6 +39,8 @@ export interface SegmentProfile {
   mediaReach: Record<Exclude<MediaId, "trade">, number>;
   /** Benefits that resonate in ads (claim ids). */
   caresAbout: ClaimId[];
+  /** How well each campaign tone lands with this segment (0 = falls flat, 1 = ideal). */
+  toneFit: Record<ToneId, number>;
 }
 
 
@@ -64,6 +66,7 @@ export const SEGMENT_PROFILES: Record<SegmentId, SegmentProfile> = {
     channelMix: { marketplace: 0.45, mass: 0.3, carrier: 0.1, online: 0.1, electronics: 0.05 },
     mediaReach: { digital: 1.3, search: 1.0, traditional: 0.7 },
     caresAbout: ["price", "battery", "sleep"],
+    toneFit: { practical: 1, playful: 0.8, energetic: 0.6, caring: 0.4, expert: 0.4, premium: 0.1 },
   },
   wellness: {
     baseDemand: { na: 55_000, eu: 50_000, apac: 60_000, latam: 25_000 },
@@ -85,6 +88,7 @@ export const SEGMENT_PROFILES: Record<SegmentId, SegmentProfile> = {
     channelMix: { online: 0.3, electronics: 0.3, marketplace: 0.25, carrier: 0.1, mass: 0.05 },
     mediaReach: { digital: 1.3, search: 0.9, traditional: 0.8 },
     caresAbout: ["sleep", "design", "platform"],
+    toneFit: { caring: 0.8, premium: 0.8, playful: 0.7, energetic: 0.6, expert: 0.5, practical: 0.4 },
   },
   older: {
     baseDemand: { na: 40_000, eu: 40_000, apac: 30_000, latam: 15_000 },
@@ -106,6 +110,7 @@ export const SEGMENT_PROFILES: Record<SegmentId, SegmentProfile> = {
     channelMix: { pharmacy: 0.45, electronics: 0.25, online: 0.2, carrier: 0.1 },
     mediaReach: { digital: 0.7, search: 1.0, traditional: 1.5 },
     caresAbout: ["safety", "heart", "privacy"],
+    toneFit: { caring: 1, expert: 0.8, practical: 0.6, premium: 0.3, playful: 0.3, energetic: 0.2 },
   },
   fitness: {
     baseDemand: { na: 35_000, eu: 40_000, apac: 35_000, latam: 15_000 },
@@ -127,6 +132,7 @@ export const SEGMENT_PROFILES: Record<SegmentId, SegmentProfile> = {
     channelMix: { specialty: 0.4, online: 0.3, marketplace: 0.2, electronics: 0.1 },
     mediaReach: { digital: 1.2, search: 1.2, traditional: 0.6 },
     caresAbout: ["gps", "water", "battery"],
+    toneFit: { energetic: 1, expert: 0.8, premium: 0.6, practical: 0.4, playful: 0.3, caring: 0.2 },
   },
   business: {
     baseDemand: { na: 30_000, eu: 25_000, apac: 20_000, latam: 8_000 },
@@ -148,6 +154,7 @@ export const SEGMENT_PROFILES: Record<SegmentId, SegmentProfile> = {
     channelMix: { bizdist: 0.7, online: 0.3 },
     mediaReach: { digital: 0.8, search: 1.0, traditional: 1.0 },
     caresAbout: ["privacy", "platform", "price"],
+    toneFit: { expert: 1, practical: 0.8, caring: 0.5, premium: 0.3, energetic: 0.3, playful: 0.2 },
   },
 };
 
@@ -185,8 +192,33 @@ export const REGION_PROFILES: Record<
   latam: { priceLevel: 0.8, season: [1, 1, 1, 1, 1.2, 0.95, 1, 1.15], channels: ["online", "marketplace", "mass", "electronics", "pharmacy", "carrier", "bizdist"] },
 };
 
-/** Trade promotion spending raises a partner's push: coverage x (1 + boost). */
-export const TRADE_PROMO = { maxBoost: 0.25, halfSaturationSpend: 150_000 };
+/**
+ * Trade promotion (push): money paid to partners for displays, co-op ads, staff incentives and
+ * better stocking. In each partner channel it creates "in-store push" (buyers who shop there meet
+ * the brand at the shelf, like awareness) and widens stocking. Push lasts only the round it's paid for.
+ *   push = maxPush x channel response x spend / (spend + halfSaturationSpend)
+ * Your own website has no partner, so trade promotion does nothing there.
+ */
+export const TRADE_PROMO = { maxPush: 0.65, halfSaturationSpend: 100_000, maxPushCap: 0.9, stockLift: 0.3 };
+
+/** How strongly each type of partner responds to trade promotion (1 = average). The Channel partner survey reveals it in words. */
+export const CHANNEL_PUSH: Record<ChannelId, number> = {
+  online: 0,
+  marketplace: 0.7,
+  mass: 1.4,
+  electronics: 1.1,
+  pharmacy: 1.3,
+  specialty: 1.0,
+  carrier: 1.0,
+  bizdist: 0.6,
+};
+
+/**
+ * Campaign effect on ad effectiveness, by segment.
+ * In the campaign's target segment: target + toneWeight x tone fit (+ the creative grade boost).
+ * In other segments: other + otherToneWeight x tone fit. No campaign tone set: noCampaign everywhere.
+ */
+export const CAMPAIGN = { target: 0.85, toneWeight: 0.35, other: 0.8, otherToneWeight: 0.2, noCampaign: 0.9 };
 
 // ---------------------------------------------------------------------------
 // Demand model

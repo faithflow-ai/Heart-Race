@@ -8,10 +8,11 @@ import {
   REGIONS,
   SENSORS,
   type ClaimId,
+  type MediaId,
   type RegionId,
   type SegmentId,
 } from "./config";
-import type { FirmDecision, ProductSpec } from "./types";
+import type { FirmDecision, ProductRegionPlan, ProductSpec } from "./types";
 
 export function newProduct(id: string, n: number): ProductSpec {
   return {
@@ -32,14 +33,30 @@ export function newProduct(id: string, n: number): ProductSpec {
     briefSent: false,
     commission: false,
     retire: false,
+    campaign: { message: "", tone: "", segment: "" },
   };
+}
+
+export function emptyMedia(): Record<MediaId, number> {
+  return { digital: 0, search: 0, traditional: 0, trade: 0 };
+}
+
+/** Total promotion dollars in one product-region plan cell. */
+export function cellPromo(pl: Partial<ProductRegionPlan> | null | undefined): number {
+  if (!pl) return 0;
+  if (pl.media) return MEDIA.reduce((a, m) => a + Math.max(0, Number(pl.media?.[m.id]) || 0), 0);
+  return Math.max(0, Number(pl.promotion) || 0);
+}
+
+/** Keep each plan cell's promotion total equal to the sum of its media dollars. */
+export function syncPromotion(d: FirmDecision) {
+  for (const regs of Object.values(d.plan ?? {}))
+    for (const pl of Object.values(regs ?? {})) if (pl) pl.promotion = cellPromo(pl);
 }
 
 export function emptyDecision(): FirmDecision {
   const regions = {} as FirmDecision["regions"];
   for (const r of REGIONS) regions[r.id] = { enter: false, entryMode: "distributor", channels: [] };
-  const mediaMix = {} as FirmDecision["mediaMix"];
-  for (const m of MEDIA) mediaMix[m.id] = 25;
   return {
     strategy: { companyName: "", mission: "", positioning: "", norms: "", posture: "", targetSegments: [], targetRegions: [] },
     goals: { share: null, revenue: null, margin: null, awareness: null, satisfaction: null },
@@ -47,7 +64,6 @@ export function emptyDecision(): FirmDecision {
     products: [],
     regions,
     plan: {},
-    mediaMix,
     capacityExpansion: 0,
     reflection: "",
     ready: false,
@@ -64,12 +80,36 @@ export function normalizeDecision(d: Partial<FirmDecision> | null | undefined): 
     strategy: { ...base.strategy, ...(d.strategy ?? {}) },
     goals: { ...base.goals, ...(d.goals ?? {}) },
     regions: { ...base.regions },
-    mediaMix: { ...base.mediaMix, ...(d.mediaMix ?? {}) },
-    plan: { ...(d.plan ?? {}) },
-    products: (d.products ?? []).map((p, i) => ({ ...newProduct(p.id ?? `p${i + 1}`, i + 1), ...p })),
+    plan: {},
+    products: (d.products ?? []).map((p, i) => {
+      const n = { ...newProduct(p.id ?? `p${i + 1}`, i + 1), ...p };
+      n.campaign = { ...newProduct("x", 1).campaign, ...(p.campaign ?? {}) };
+      return n;
+    }),
     research: [...(d.research ?? [])],
   };
+  delete out.mediaMix;
   for (const r of REGIONS) out.regions[r.id] = { ...base.regions[r.id], ...(d.regions?.[r.id] ?? {}) };
+  // Plan cells: promotion is entered in dollars per medium. Older decisions had one total per
+  // cell plus a team-wide percent split; convert those to dollars per medium.
+  const legacy = d.mediaMix;
+  const legacyTotal = legacy ? MEDIA.reduce((a, m) => a + Math.max(0, legacy[m.id] ?? 0), 0) : 0;
+  for (const [pid, regs] of Object.entries(d.plan ?? {})) {
+    const o = (out.plan[pid] = {} as FirmDecision["plan"][string]);
+    for (const [r, cell] of Object.entries(regs ?? {})) {
+      if (!cell) continue;
+      const c = Object.assign({ price: 0, production: 0, forecast: 0, promotion: 0 }, cell) as ProductRegionPlan;
+      if (!cell.media) {
+        c.media = emptyMedia();
+        const total = Math.max(0, Number(cell.promotion) || 0);
+        if (total > 0) {
+          for (const m of MEDIA) c.media[m.id] = Math.round(legacyTotal > 0 ? (total * Math.max(0, legacy![m.id] ?? 0)) / legacyTotal : total / MEDIA.length);
+        }
+      } else c.media = { ...emptyMedia(), ...cell.media };
+      c.promotion = cellPromo(c);
+      o[r as RegionId] = c;
+    }
+  }
   return out;
 }
 

@@ -16,6 +16,7 @@ export interface TeamData {
   budget: { carried: number; release: number; earned: number; available: number; research: number; promotion: number; remaining: number; futureReleases: number; capital: number; capacity: number };
   committed: { id: string; launchRound: number; retired: boolean; unitCost: number }[];
   regionsEntered: Record<string, string>;
+  channelsOpen: Record<string, string[]>;
   inventory: Record<string, Record<string, number>>;
   processed: { round: number; processed_at: string }[];
   research: { round: number; study: string }[];
