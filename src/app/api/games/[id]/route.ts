@@ -1,4 +1,5 @@
-import { HttpError, requireInstructor } from "@/lib/auth";
+import { HttpError, isGuest, requireInstructor } from "@/lib/auth";
+import { showcaseInfo } from "@/lib/showcase";
 import { q } from "@/lib/db";
 import { firmMeta, getFirms, getResult, processedRounds, setTeamCount, settingsOf } from "@/lib/game";
 import { instructorGame } from "@/lib/access";
@@ -26,7 +27,9 @@ export const GET = handle(async (_req: Request, ctx: Ctx) => {
     : [];
   return {
     game: { ...g, settings: settingsOf(g) },
-    demo: demoInfo(g),
+    demo: isGuest(u) ? null : demoInfo(g),
+    guest: isGuest(u),
+    showcase: isGuest(u) ? null : showcaseInfo(g),
     firms: firms.map((f) => ({
       ...f,
       effectiveLevel: firmMeta(f, Math.min(g.current_round, 7)).aiLevel,

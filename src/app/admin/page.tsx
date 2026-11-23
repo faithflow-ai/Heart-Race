@@ -11,6 +11,26 @@ export default function AdminHome() {
   const [teams, setTeams] = useState(6);
   const [err, setErr] = useState("");
   const [demoBusy, setDemoBusy] = useState(false);
+  const [guest, setGuest] = useState(false);
+  const [showcase, setShowcase] = useState<string | null>(null);
+  async function createShowcase() {
+    if (!window.confirm("Create a showcase class? It adds a separate class with 4 teams that have played every round, from Practice to the Final round, plus a read-only guest login you can give colleagues. Building it takes a minute or two. Your other classes are not touched, and you can delete it any time.")) return;
+    setErr("");
+    try {
+      setShowcase("Creating the class and teams…");
+      const r = await api("/api/games/showcase", { body: {} });
+      let done = false;
+      while (!done) {
+        const st = await api(`/api/games/${r.game.id}/showcase`, { body: {} });
+        setShowcase(`Playing the rounds: ${st.built} of ${st.total} done…`);
+        done = st.done;
+      }
+      window.location.href = `/admin/${r.game.id}`;
+    } catch (e) {
+      setErr((e as Error).message + " You can open the class from the list and click Continue building to finish.");
+      setShowcase(null);
+    }
+  }
   async function createDemo() {
     if (!window.confirm("Create a demo class? It adds a separate class labeled DEMO with 13 fake students, 4 teams and 3 rounds already played. Your other classes are not touched, and you can delete the demo any time.")) return;
     setDemoBusy(true);
@@ -24,7 +44,10 @@ export default function AdminHome() {
     }
   }
   useEffect(() => {
-    api("/api/games").then((r) => setGames(r.games));
+    api("/api/games").then((r) => {
+      setGames(r.games);
+      setGuest(!!r.guest);
+    });
   }, []);
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -48,7 +71,7 @@ export default function AdminHome() {
             <tbody>
               {games.map((g) => (
                 <tr key={g.id}>
-                  <td><a href={`/admin/${g.id}`}>{g.name}</a>{g.name.startsWith("DEMO") && <span className="badge warn" style={{ marginLeft: 6 }}>Demo</span>}</td>
+                  <td><a href={`/admin/${g.id}`}>{g.name}</a>{g.name.startsWith("DEMO") && <span className="badge warn" style={{ marginLeft: 6 }}>Demo</span>}{g.name.startsWith("SHOWCASE") && <span className="badge accent" style={{ marginLeft: 6 }}>Showcase</span>}</td>
                   <td><code>{g.code}</code></td>
                   <td>{g.status}</td>
                   <td>{ROUNDS.names[g.current_round] ?? "Finished"}</td>
@@ -59,6 +82,8 @@ export default function AdminHome() {
           </table>
         )}
       </div>
+      {guest && <div className="notice info">You&apos;re signed in as a <b>read-only guest</b>. Open the class above to look around: the class screen, each team&apos;s decisions and results, and &quot;View as student&quot;. Nothing you do can change anything.</div>}
+      {!guest && <>
       <div className="panel" style={{ maxWidth: 520 }}>
         <h2 style={{ marginTop: 0 }}>Create a class</h2>
         <form onSubmit={create}>
@@ -76,6 +101,12 @@ export default function AdminHome() {
         <p className="small">Creates a separate class labeled <b>DEMO</b> with fake students on 4 teams, sample decisions and the Practice round, Round 1 and Round 2 already scored. Use it to review the results screens, the student view and the CSV exports. It never touches your other classes, and you can delete it from its class screen.</p>
         <button disabled={demoBusy} onClick={createDemo}>{demoBusy ? "Building the demo class (about 10 seconds)…" : "Create demo class"}</button>
       </div>
+      <div className="panel" style={{ maxWidth: 520 }}>
+        <h2 style={{ marginTop: 0 }}>Show Heart Race to colleagues</h2>
+        <p className="small">Creates a separate class labeled <b>SHOWCASE</b> where 4 teams with different strategies have played the whole game, Practice to the Final round: every decision, research study, result, creative submission and reflection. It comes with a <b>read-only guest login</b> you can give colleagues, so they can browse as the instructor or as any team without changing anything.</p>
+        <button disabled={!!showcase} onClick={createShowcase}>{showcase ?? "Create showcase class"}</button>
+      </div>
+      </>}
     </>
   );
 }

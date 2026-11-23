@@ -30,6 +30,8 @@ interface Overview {
   rounds: { round: number; processed_at: string; run_count: number }[];
   flagged: { firm: string; title: string; detail: string }[];
   demo: { password: string; students: { name: string; email: string; team: string | null }[] } | null;
+  showcase?: { guestEmail: string; guestPassword: string; built: number } | null;
+  guest?: boolean;
 }
 
 export default function Console({ params }: { params: Promise<{ id: string }> }) {
@@ -81,7 +83,9 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
         <div className="stat"><div className="k">Students joined</div><div className="v">{students.reduce((a, f) => a + f.members.length, 0)}</div></div>
       </div>
 
-      {o.demo && <DemoPanel id={id} demo={o.demo} />}
+      {o.guest && <div className="notice info"><b>Read-only guest view.</b> Look at anything: the class results below, <b>Decisions &amp; results</b> for each team, <b>Grade creative work</b>, and <b>View as student</b> to see a team&apos;s own screens. Buttons that would change something only show a message that guests can&apos;t make changes.</div>}
+      {o.showcase && <ShowcasePanel id={id} sc={o.showcase} />}
+      {o.demo && <DemoPanel id={id} demo={o.demo} showcase={!!o.showcase} />}
 
       <div className="panel">
         <div className="row">
@@ -293,10 +297,47 @@ function toLocalInput(iso: string, tz: string) {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
-function DemoPanel({ id, demo }: { id: string; demo: NonNullable<Overview["demo"]> }) {
+function ShowcasePanel({ id, sc }: { id: string; sc: NonNullable<Overview["showcase"]> }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const total = ROUNDS.final + 1;
+  async function finish() {
+    try {
+      let done = false;
+      while (!done) {
+        const st = await api(`/api/games/${id}/showcase`, { body: {} });
+        setBusy(`Playing the rounds: ${st.built} of ${st.total} done…`);
+        done = st.done;
+      }
+      window.location.reload();
+    } catch (e) {
+      setBusy((e as Error).message);
+    }
+  }
+  const site = typeof window !== "undefined" ? window.location.origin : "";
+  return (
+    <div className="panel" style={{ borderColor: "var(--accent)" }}>
+      <h2 style={{ marginTop: 0 }}>Showcase class: guest login for colleagues</h2>
+      {sc.built < total && (
+        <div className="notice warn">
+          {sc.built} of {total} rounds are played. <button disabled={!!busy} onClick={finish}>{busy ?? "Continue building"}</button>
+        </div>
+      )}
+      <p className="small">Give colleagues these details. The guest login sees only this class, and can&apos;t change anything.</p>
+      <table style={{ maxWidth: 640 }}>
+        <tbody>
+          <tr><td>Website</td><td><code>{site}</code></td></tr>
+          <tr><td>Email</td><td><code>{sc.guestEmail}</code></td></tr>
+          <tr><td>Password</td><td><code>{sc.guestPassword}</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DemoPanel({ id, demo, showcase }: { id: string; demo: NonNullable<Overview["demo"]>; showcase?: boolean }) {
   const [busy, setBusy] = useState(false);
   async function del() {
-    if (!window.confirm("Delete this demo class and all its fake student accounts? This can't be undone. Your other classes are not affected.")) return;
+    if (!window.confirm("Delete this sample class and all its fake accounts? This can't be undone. Your other classes are not affected.")) return;
     setBusy(true);
     await api(`/api/games/${id}`, { method: "DELETE" });
     window.location.href = "/admin";
@@ -304,9 +345,9 @@ function DemoPanel({ id, demo }: { id: string; demo: NonNullable<Overview["demo"
   return (
     <div className="panel" style={{ borderColor: "var(--warn)", background: "var(--warn-soft)" }}>
       <div className="row">
-        <h2 style={{ margin: 0 }}>Demo class (sample data)</h2>
+        <h2 style={{ margin: 0 }}>{showcase ? "Showcase class (sample data)" : "Demo class (sample data)"}</h2>
         <span className="spacer" />
-        <button className="danger" disabled={busy} onClick={del}>Delete demo class</button>
+        <button className="danger" disabled={busy} onClick={del}>{showcase ? "Delete showcase class" : "Delete demo class"}</button>
       </div>
       <p className="small">Fake students and sample decisions. To see the student side, sign out and sign in as any student below, or use <b>View as student</b> on a team. All fake students share one password: <code style={{ fontSize: 15 }}>{demo.password}</code></p>
       <details>

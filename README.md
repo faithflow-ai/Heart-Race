@@ -55,6 +55,10 @@ Without this, students who forget their password ask the instructor, who resets 
 
 The sign-in page then shows a "Forgot your password?" link that emails a one-hour reset link.
 
+## Showcase class (for colleagues)
+
+On **Your classes**, **Create showcase class** builds a separate class where 4 teams with different strategies have played every round, Practice to the Final round, with decisions, research, results, creative work and reflections. Its class screen shows a **read-only guest login** (an instructor account that sees only that class and can't change anything) to give colleagues. Delete it from its class screen like a demo class. Code: `src/lib/showcase.ts`.
+
 ## Demo class
 
 On the instructor's class list, **Create demo class** builds a separate class labeled DEMO with 13 fake students on 4 teams, sample decisions and the Practice round, Round 1 and Round 2 already scored. Its class screen lists the fake logins (one shared password) and has a **Delete demo class** button that removes it and its fake accounts.

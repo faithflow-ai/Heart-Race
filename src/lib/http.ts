@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import { HttpError } from "./auth";
+import { HttpError, currentUser, isGuest } from "./auth";
 
 export function handle<A extends unknown[]>(fn: (...args: A) => Promise<unknown>) {
   return async (...args: A) => {
     try {
+      const req = args[0] instanceof Request ? args[0] : null;
+      if (req && req.method !== "GET" && !/\/api\/auth\/|\/viewas$/.test(new URL(req.url).pathname) && isGuest(await currentUser()))
+        throw new HttpError(403, "This is a read-only guest login: you can look at everything, but nothing can be changed.");
       const out = await fn(...args);
       if (out instanceof Response) return out;
       return NextResponse.json(out ?? { ok: true });

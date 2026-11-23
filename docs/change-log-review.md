@@ -111,6 +111,7 @@
 ## Later batch (queued Nov 23, not in the current build)
 
 - [P2] Instructor – Unusual activity flags: the class screen flags agent-like patterns for each team and says why each one was flagged, with an optional email to the instructor once email sending is set up. Examples: every input entered within seconds, only one teammate ever active, rapid bursts of edits at identical speed, edits at odd hours, no round reflection. Wording must make clear a flag is a prompt to look closer, not proof that a student used an AI agent
+- [P2] Instructor – Showcase class for faculty peers: a fully played class (Practice through the Final round) that colleagues in the business school can walk through to see what students do, what the results look like and whether the logic makes sense. A few teams with clearly different strategies; every input, report, result, research study, creative submission (placeholder links) and reflection filled in. Colleagues get a read-only guest login so they can browse as the instructor or as any team without changing anything. Include a short step-by-step guided tour document. Victor wants to test PR 4 first (queued Nov 23). Victor said go Nov 23. **Built in PR 5 (Nov 23), waiting for merge.**
 
 ---
 
