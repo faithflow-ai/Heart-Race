@@ -11,6 +11,13 @@ export interface User {
 }
 
 const COOKIE = "hr_session";
+
+/** Fake accounts made by the demo and showcase classes. */
+export const DEMO_EMAIL_DOMAIN = "demo.heartrace.test";
+/** A showcase guest is a read-only instructor login for one showcase class (for colleagues). */
+export function isGuest(u: Pick<User, "email"> | null | undefined) {
+  return !!u && u.email.startsWith("guest.") && u.email.endsWith("@" + DEMO_EMAIL_DOMAIN);
+}
 function secret() {
   const s = process.env.AUTH_SECRET ?? (process.env.NODE_ENV === "production" ? "" : "dev-only-secret-change-me");
   if (!s) throw new Error("AUTH_SECRET is not set");

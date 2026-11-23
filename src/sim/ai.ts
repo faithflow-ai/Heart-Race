@@ -57,7 +57,7 @@ export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
 
   // --- Strategy and targets ------------------------------------------------
   if (!last) {
-    let targets = STYLE_TARGETS[firm.aiStyle][firm.slot % STYLE_TARGETS[firm.aiStyle].length];
+    const targets = firm.targets?.length ? firm.targets : STYLE_TARGETS[firm.aiStyle][firm.slot % STYLE_TARGETS[firm.aiStyle].length];
     d.strategy.companyName = firm.name;
     d.strategy.posture = firm.aiStyle === "premium" ? "differentiate" : firm.aiStyle === "lowcost" ? "cost" : "follow";
     d.strategy.mission = `${firm.name} makes wearables for ${targets.map((t) => SEGMENTS.find((s) => s.id === t)!.name).join(" and ")}.`;

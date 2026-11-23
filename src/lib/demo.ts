@@ -11,11 +11,11 @@ import type { AiStyle, RegionId, StudyId } from "@/sim/config";
 import { REGIONS } from "@/sim/config";
 import { normalizeDecision } from "@/sim/product";
 import type { FirmDecision, FirmMeta } from "@/sim/types";
-import { HttpError, type User } from "./auth";
+import { DEMO_EMAIL_DOMAIN, HttpError, type User } from "./auth";
 import { newId, one, q } from "./db";
 import { buyStudy, createGame, firmMeta, getFirms, getGame, getResult, processCurrentRound, settingsOf, type GameRow } from "./game";
 
-export const DEMO_EMAIL_DOMAIN = "demo.heartrace.test";
+export { DEMO_EMAIL_DOMAIN } from "./auth";
 
 export interface DemoInfo {
   password: string;
@@ -23,7 +23,7 @@ export interface DemoInfo {
   students: { name: string; email: string; team: string | null }[];
 }
 
-const STUDENTS = [
+export const STUDENTS = [
   "Avery Nguyen", "Jordan Patel", "Sam Rivera",
   "Taylor Kim", "Morgan Lee", "Casey Brooks",
   "Riley Chen", "Jamie Ortiz", "Drew Hughes",
@@ -66,7 +66,7 @@ const TEAMS: { company: string; style: AiStyle; level: number; mission: string; 
   },
 ];
 
-const CHARTER =
+export const CHARTER =
   "1) Roles: one person leads products, one leads pricing and promotion, one leads forecast and production.\n" +
   "2) We reply in the group chat within 24 hours.\n3) We meet Thursdays after class.\n" +
   "4) We decide by consensus; the product lead finalizes by Sunday 6 PM.\n5) We split the research reading evenly.\n" +
@@ -79,7 +79,7 @@ const REFLECTIONS = [
   "Margins were thin because of partner fees. We will shift some volume online and watch the burn rate of the marketing budget.",
 ];
 
-function demoPassword() {
+export function demoPassword() {
   const chars = "abcdefghjkmnpqrstuvwxyz23456789";
   return "demo-" + Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
@@ -195,7 +195,7 @@ async function sampleCreative(firmIds: string[], byFirm: Record<string, User[]>,
 }
 
 /** A few change-log lines per round, by different teammates, so the log and its export have content. */
-async function sampleLog(firmId: string, round: number, members: User[], d: FirmDecision) {
+export async function sampleLog(firmId: string, round: number, members: User[], d: FirmDecision) {
   const lines: { path: string; old: unknown; new: unknown }[] = [];
   if (round === 0) {
     lines.push({ path: "strategy.companyName", old: "", new: d.strategy.companyName });

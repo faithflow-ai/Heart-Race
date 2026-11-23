@@ -111,6 +111,8 @@ export interface FirmMeta {
   aiLevel: number;
   aiStyle: AiStyle;
   slot: number;
+  /** Optional fixed target segments (used by the showcase class so teams match their positioning). */
+  targets?: SegmentId[];
 }
 
 export interface InventoryLot {

@@ -1,11 +1,11 @@
-import { requireInstructor } from "@/lib/auth";
+import { isGuest, requireInstructor } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { createGame } from "@/lib/game";
 import { handle } from "@/lib/http";
 
 export const GET = handle(async () => {
   const u = await requireInstructor();
-  return { games: await q("select id, name, code, status, current_round, deadline, timezone from games where instructor_id = $1 order by created_at desc", [u.id]) };
+  return { guest: isGuest(u), games: await q("select id, name, code, status, current_round, deadline, timezone from games where instructor_id = $1 or settings->'showcase'->>'guestUserId' = $1 order by created_at desc", [u.id]) };
 });
 
 export const POST = handle(async (req: Request) => {
