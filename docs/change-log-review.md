@@ -94,6 +94,19 @@
 - [P1] App-wide – Phone / small-screen layout: the sign-in card is cut off and needs sideways scrolling in a narrow window; check and fix the layout of every screen on phones and small laptops
 - [NOTE] Join flow – STILL TO REVIEW: the step after "Find class" (joining and team assignment) couldn't be seen without a real student account; review it in the throwaway test class
 
+
+## New feature: Creative campaigns (queued Nov 23)
+
+- [P1] Creative campaigns and graded creative work (one feature, not built yet):
+  - **Campaign in the sim:** each product gets one campaign with a message, a tone and a target segment, set on the Decisions screen. Teams can edit it every round; if they don't, it carries forward. The sim scores how well the campaign fits the segment (and the product), and that fit affects how well its promotion works.
+  - **Creative work submitted 3 times:** teams upload a file or paste a link in the sim (links to Google Drive, YouTube or a live page are simplest; file uploads need storage set up). Digital work only, no print ads.
+    - Round 1 launch: a 1-page creative brief, 3 social media posts and 1 search ad.
+    - Round 4: 1 or 2 vertical video ads and 1 horizontal video of about 30 seconds. A new 1-page creative brief only if the message changed or the team launched a new product.
+    - Final round: a complete product launch landing page that brings together all the earlier work.
+  - **Instructor grading screen:** see every team's submission per milestone and grade it with a rubric: fit with the target segment, clarity of the message, creativity, brand consistency, and craft. Optional written feedback the team can see.
+  - **Effect in the sim:** the grade becomes a creative quality boost to the team's promotion for the following rounds (until the next graded milestone). Victor's grade also counts in the course outside the sim.
+  - **Needs a Learn lesson** on creative briefs and campaigns (what a brief contains, message and tone by segment, social, search and video ad formats, landing pages), plus a short assignment sheet for each milestone and the rubric. The lesson will be added to the drafts later.
+
 ---
 
 ## Remaining reviews and deferred items
