@@ -13,6 +13,7 @@ export function runRound(opts: {
   studentDecisions: Record<string, FirmDecision | null>;
   carriedForward?: Set<string>;
   settings?: GameSettings;
+  creativeBoost?: Record<string, number>;
 }): RoundResult {
   const decisions: Record<string, FirmDecision | null> = { ...opts.studentDecisions };
   for (const f of opts.firms) {
@@ -28,6 +29,7 @@ export function runRound(opts: {
     decisions,
     carriedForward: opts.carriedForward,
     settings: opts.settings,
+    creativeBoost: opts.creativeBoost,
   });
 }
 

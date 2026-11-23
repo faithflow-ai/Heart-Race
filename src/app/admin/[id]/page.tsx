@@ -69,6 +69,7 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
         <h1 style={{ margin: 0 }}>{g.name}</h1>
         <span className="badge accent" style={{ fontSize: 16, padding: "4px 12px" }}>Class code: {g.code}</span>
         <span className="spacer" />
+        <a href={`/admin/${id}/creative`}>Grade creative work</a>
         <a href="/admin">← All classes</a>
       </div>
       {msg && <div className={`notice ${msg.kind}`}>{msg.text}</div>}

@@ -46,6 +46,68 @@ export const MEDIA = [
   { id: "trade", name: "Trade promotion" },
 ] as const;
 export type MediaId = (typeof MEDIA)[number]["id"];
+/** Media that build consumer awareness (pull). Trade promotion pushes through partners instead. */
+export const AD_MEDIA = ["digital", "search", "traditional"] as const;
+export type AdMediaId = (typeof AD_MEDIA)[number];
+
+/** Tones a campaign can take. Each segment responds to some tones better than others (hidden; the Customer needs study reveals it). */
+export const TONES = {
+  caring: { name: "Warm and reassuring" },
+  energetic: { name: "Energetic and motivating" },
+  premium: { name: "Premium and aspirational" },
+  practical: { name: "Practical and no-nonsense" },
+  playful: { name: "Friendly and playful" },
+  expert: { name: "Expert and trustworthy" },
+} as const;
+export type ToneId = keyof typeof TONES;
+
+/**
+ * Creative work teams submit as links, graded by the instructor with a rubric.
+ * The grade lifts the team's campaign effectiveness in the rounds after the milestone.
+ */
+export const CREATIVE = {
+  milestones: [
+    {
+      id: "launch",
+      round: 1,
+      title: "Round 1 launch campaign",
+      items: [
+        { id: "brief", label: "1-page creative brief", required: true },
+        { id: "social1", label: "Social media post 1", required: true },
+        { id: "social2", label: "Social media post 2", required: true },
+        { id: "social3", label: "Social media post 3", required: true },
+        { id: "search", label: "Search ad", required: true },
+      ],
+    },
+    {
+      id: "video",
+      round: 4,
+      title: "Round 4 video campaign",
+      items: [
+        { id: "vertical1", label: "Vertical video ad (9:16)", required: true },
+        { id: "vertical2", label: "Second vertical video ad (optional)", required: false },
+        { id: "horizontal", label: "Horizontal video, about 30 seconds (16:9)", required: true },
+        { id: "brief", label: "New 1-page creative brief (only if your message changed or you launched a new product)", required: false },
+      ],
+    },
+    {
+      id: "landing",
+      round: 7,
+      title: "Final round launch landing page",
+      items: [{ id: "landing", label: "Product launch landing page (brings together your earlier work)", required: true }],
+    },
+  ],
+  rubric: [
+    { id: "fit", name: "Segment fit", help: "Clearly speaks to the team's declared target segment and its needs." },
+    { id: "clarity", name: "Message clarity", help: "One main message, quickly understood, with a clear call to action." },
+    { id: "creativity", name: "Creativity", help: "Built on an insight; distinctive rather than generic." },
+    { id: "consistency", name: "Brand consistency", help: "Matches the brief, positioning and earlier work in tone, look and promise." },
+    { id: "craft", name: "Craft", help: "Fits the format (length, aspect ratio, character limits, page structure); polished." },
+  ],
+  /** Average rubric score (1-5) of 3 = no effect; each point above or below moves ad effectiveness in the campaign's segment by this much. */
+  boostPerPoint: 0.05,
+} as const;
+export type MilestoneId = (typeof CREATIVE.milestones)[number]["id"];
 
 /** Benefits a product's ads can feature. */
 export const CLAIMS = {
@@ -260,11 +322,11 @@ export const STUDIES = {
   needs: { name: "Customer needs", cost: 40_000 },
   potential: { name: "Market potential", cost: 25_000 },
   price: { name: "Price willing to pay", cost: 30_000 },
-  media: { name: "Media and channel preferences", cost: 30_000 },
+  media: { name: "Media preferences", cost: 20_000 },
   awareness: { name: "Awareness tracking", cost: 20_000 },
   satisfaction: { name: "Satisfaction survey", cost: 20_000 },
   competitors: { name: "Competitor benchmark", cost: 35_000 },
-  partners: { name: "Channel partner survey", cost: 20_000 },
+  partners: { name: "Channel partner survey", cost: 30_000 },
 } as const;
 export type StudyId = keyof typeof STUDIES;
 

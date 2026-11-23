@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "balance": "tsx scripts/balance.ts"
+    "balance": "tsx scripts/balance.ts",
+    "media-check": "tsx scripts/media-check.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",

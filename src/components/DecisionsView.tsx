@@ -1,5 +1,6 @@
 "use client";
-import { CHANNELS, CLAIMS, COMPONENTS, ENTRY_MODES, MEDIA, REGIONS, SEGMENTS, SENSORS, STUDIES, type StudyId } from "@/sim/config";
+import { CHANNELS, CLAIMS, COMPONENTS, ENTRY_MODES, MEDIA, REGIONS, SEGMENTS, SENSORS, STUDIES, TONES, type StudyId, type ToneId } from "@/sim/config";
+import { PromoSummary } from "./PromoSummary";
 import type { FirmDecision } from "@/sim/types";
 import { money, num } from "./client";
 
@@ -73,7 +74,7 @@ export function DecisionsView({ d, round, accepted = {} }: { d: FirmDecision; ro
           <div className="scroll">
             <table>
               <thead>
-                <tr><th>Product</th><th>Status this round</th><th>Tier / segment</th><th>Design</th><th>Sensors</th><th>Ad claims</th><th className="num">App plan</th></tr>
+                <tr><th>Product</th><th>Status this round</th><th>Tier / segment</th><th>Design</th><th>Sensors</th><th>Ad claims</th><th>Campaign</th><th className="num">App plan</th></tr>
               </thead>
               <tbody>
                 {d.products.map((p) => (
@@ -84,6 +85,14 @@ export function DecisionsView({ d, round, accepted = {} }: { d: FirmDecision; ro
                     <td className="small">{opt("form", p.form)}, {opt("chip", p.chip)} chip, {opt("battery", p.battery)} battery, {opt("display", p.display)} display, {opt("material", p.material)}, {opt("water", p.water)}, {p.privacy === "medical" ? "medical-grade privacy" : "standard privacy"}</td>
                     <td className="small">{p.sensors.map((x) => SENSORS[x]?.name ?? x).join(", ") || "–"}</td>
                     <td className="small">{p.claims.map((c) => CLAIMS[c]?.name ?? c).join(", ") || "–"}</td>
+                    <td className="small">
+                      {p.campaign?.tone || p.campaign?.segment || p.campaign?.message ? (
+                        <>
+                          {p.campaign.segment ? seg(p.campaign.segment) : "No segment"} · {p.campaign.tone ? TONES[p.campaign.tone as ToneId]?.name : "no tone"}
+                          {p.campaign.message && <div style={{ fontStyle: "italic" }}>&ldquo;{p.campaign.message}&rdquo;</div>}
+                        </>
+                      ) : "–"}
+                    </td>
                     <td className="num small">{p.subscriptionPrice ? `$${p.subscriptionPrice}/mo` : "–"}</td>
                   </tr>
                 ))}
@@ -114,18 +123,19 @@ export function DecisionsView({ d, round, accepted = {} }: { d: FirmDecision; ro
             )}
           </div>
           <div className="panel">
-            <h3 style={{ marginTop: 0 }}>Price, promotion, forecast and production</h3>
+            <h3 style={{ marginTop: 0 }}>Price, promotion by medium, forecast and production</h3>
             {!planRows.length && <p className="muted">Nothing planned.</p>}
             {planRows.length > 0 && (
               <div className="scroll">
                 <table>
-                  <thead><tr><th>Product</th><th>Region</th><th className="num">Price</th><th className="num">Promotion</th><th className="num">Sales forecast</th><th className="num">Production</th></tr></thead>
+                  <thead><tr><th>Product</th><th>Region</th><th className="num">Price</th>{MEDIA.map((m) => <th key={m.id} className="num">{m.name}</th>)}<th className="num">Promotion total</th><th className="num">Sales forecast</th><th className="num">Production</th></tr></thead>
                   <tbody>
                     {planRows.map(({ p, r, pl }) => (
                       <tr key={p.id + r.id}>
                         <td>{p.name}</td><td>{r.name}</td>
                         <td className="num">{pl.price ? `$${pl.price}` : "–"}</td>
-                        <td className="num">{money(pl.promotion)}</td>
+                        {MEDIA.map((m) => <td key={m.id} className="num">{money(pl.media?.[m.id] ?? 0)}</td>)}
+                        <td className="num"><b>{money(pl.promotion)}</b></td>
                         <td className="num">{num(pl.forecast)}</td>
                         <td className="num">{num(pl.production)}</td>
                       </tr>
@@ -135,10 +145,10 @@ export function DecisionsView({ d, round, accepted = {} }: { d: FirmDecision; ro
               </div>
             )}
             <p className="small" style={{ marginTop: 10 }}>
-              <b>Media split:</b> {MEDIA.map((m) => `${m.name} ${d.mediaMix[m.id] ?? 0}%`).join(" · ")}
-              {" · "}<b>Capacity added:</b> {d.capacityExpansion ? `${num(d.capacityExpansion)} units` : "none"}
+              <b>Capacity added:</b> {d.capacityExpansion ? `${num(d.capacityExpansion)} units` : "none"}
             </p>
           </div>
+          {planRows.length > 0 && <PromoSummary d={d} products={d.products.filter((p) => planRows.some((x) => x.p.id === p.id))} regions={REGIONS.filter((r) => planRows.some((x) => x.r.id === r.id)).map((r) => r.id)} />}
         </>
       )}
 

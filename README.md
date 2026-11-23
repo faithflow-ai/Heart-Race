@@ -20,7 +20,9 @@ All numbers live in two files:
 - `src/sim/config.ts`: what students can see (component costs, channel margins, budgets, rounds, scorecard weights, AI ramp, grade bands).
 - `src/sim/market.ts`: hidden buyer preferences and demand settings (students learn these through research).
 
-After changing numbers, run `npm run balance` to watch a simulated season of 8 AI firms, and `npm test` to check nothing broke.
+After changing numbers, run `npm run balance` to watch a simulated season of 8 AI firms, `npm run media-check` to compare promotion plans (all digital, all trade, mixes) for a team targeting each segment, and `npm test` to check nothing broke.
+
+Student reading lives in two places: short texts (round focus, Learn boxes, FAQ, research descriptions) in `src/sim/content.ts`, and the scenario briefing and Learn lessons in `src/sim/lessons.ts` (generated from the approved drafts; lines starting with `>` are instructor notes, shown only in View as student).
 
 ## Running it on your laptop
 

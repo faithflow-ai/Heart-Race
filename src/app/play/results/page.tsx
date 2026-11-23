@@ -5,7 +5,8 @@ import { api } from "@/components/client";
 import { ReportView, type LeaderRow } from "@/components/ReportView";
 import { useTeam } from "@/components/TeamContext";
 import { ROUNDS } from "@/sim/config";
-import type { FirmReport, ProductSpec, ScoreBreakdown } from "@/sim/types";
+import type { FirmDecision, FirmReport, ProductSpec, ScoreBreakdown } from "@/sim/types";
+import type { ProForma } from "@/sim/proforma";
 
 export default function ResultsPage() {
   return (
@@ -21,7 +22,7 @@ function Results() {
   const t = team!;
   const rounds = t.processed.map((p) => p.round);
   const round = sp.get("round") !== null ? Number(sp.get("round")) : rounds[rounds.length - 1];
-  const [data, setData] = useState<{ report: FirmReport; score: ScoreBreakdown | null; leaderboard: LeaderRow[]; products: Record<string, ProductSpec> } | null>(null);
+  const [data, setData] = useState<{ report: FirmReport; score: ScoreBreakdown | null; leaderboard: LeaderRow[]; products: Record<string, ProductSpec>; proforma: ProForma | null; decision: FirmDecision | null } | null>(null);
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -46,7 +47,7 @@ function Results() {
       <p className="small muted">See what your team decided in this round: <a href={`/play/history?round=${round}`}>Past decisions, {ROUNDS.names[round]}</a></p>
       {err && <div className="notice bad">{err}</div>}
       {!data && !err && <p className="muted">Loading…</p>}
-      {data && <ReportView round={round} report={data.report} score={data.score} leaderboard={data.leaderboard} names={names} />}
+      {data && <ReportView round={round} report={data.report} score={data.score} leaderboard={data.leaderboard} names={names} proforma={data.proforma} targets={data.decision?.strategy?.targetSegments ?? []} />}
     </>
   );
 }

@@ -2,13 +2,13 @@
 
 export const ROUND_FOCUS = [
   { title: "Organize and research", text: "Name your company, write your team charter, read the free market survey, pick your target segments and regions, and send your first product briefs to engineering. Products briefed now are ready to sell in Round 1. Nothing is scored this round." },
-  { title: "Launch", text: "Your first products reach the market. Confirm the target segments and regions you picked in Practice (you can change them until the Round 1 deadline), enter regions, choose channels, set prices, split promotion and set production. Set numeric goals and a sales forecast: both count toward your goal-accuracy score." },
+  { title: "Launch", text: "Your first products reach the market. Confirm the target segments and regions you picked in Practice (you can change them until the Round 1 deadline), enter regions, choose channels, set prices, put promotion dollars into each medium, set a campaign for each product and set production. Your first creative work is due on the Creative tab. Set numeric goals and a sales forecast: both count toward your goal-accuracy score." },
   { title: "Go to market", text: "Read your Round 1 results. Adjust price, promotion and ad messages, and fix stockouts or excess inventory. Watch the marketing budget: this is the last fixed release." },
   { title: "Learn and adjust", text: "Head office releases the last $1M. Pace it through the final round. This is your last chance to brief a third product so it's ready in Round 4." },
-  { title: "Expand", text: "Third products launch. Consider a second region, more channels and capacity. Engineering fees are now 50% higher." },
+  { title: "Expand", text: "Third products launch. Consider a second region, more channels and capacity. Engineering fees are now 50% higher. Your video ads are due on the Creative tab." },
   { title: "Compete", text: "Rivals are getting sharper. Push into the segments where you lead and defend against price moves." },
   { title: "Refine", text: "All decisions are open. Tune the mix and keep your forecast tight." },
-  { title: "Close strong", text: "The final round counts the most (20%). Finish with your best plan and write your final reflection." },
+  { title: "Close strong", text: "The final round counts the most (20%). Finish with your best plan, submit your launch landing page on the Creative tab and write your final reflection." },
 ];
 
 export const LEARN: Record<string, string> = {
@@ -21,7 +21,7 @@ export const LEARN: Record<string, string> = {
   markets:
     "You sell through partners, and partners set the terms. Each channel keeps a margin of the retail price; selling direct online keeps the full price but you pay fulfillment. Buyers only find you in the channels where they shop. As your volume in a channel grows, you gain leverage to cut the partner's margin. Spreading thin means paying full margins everywhere.",
   pricing:
-    "Price against what each segment expects to pay. Above that, demand falls off fast for price-sensitive segments. Promotion builds awareness with diminishing returns, and part of it carries into the next round, so steady spending beats one splurge. Ad claims that match what a segment cares about lift sales, but claims the product can't back up are flagged and hurt satisfaction.",
+    "Price against what each segment expects to pay. Above that, demand falls off fast for price-sensitive segments. Promotion comes in two kinds. Consumer ads (pull) build awareness, each medium reaching some segments better than others, with diminishing returns, and part of it carries into the next round. Trade promotion (push) pays your channel partners to display, stock and recommend your brand, so buyers who shop there meet it in the store; it lasts only the round you pay for it, and partner types respond differently. A campaign aimed at the right segment, in a tone that suits it, makes every ad dollar work harder. Ad claims that match what a segment cares about lift sales, but claims the product can't back up are flagged and hurt satisfaction.",
   production:
     "Your forecast is what you expect to sell. Production is what you make. They don't have to match, but you pay for every unit made: unsold units cost 5% of unit cost per round to hold and are cleared at a loss after 2 rounds. Run short and buyers go to rivals. The factory has a capacity limit; overtime adds up to 20% at a higher cost, and new capacity takes a round to come online.",
   review: "Come here before every deadline to double-check your team's decisions. The checklist below lists anything missing or unfinished, with a link to fix it. There's no submit button: whatever is saved at the deadline is used automatically, and anything you leave unchanged carries forward from last round.",
@@ -33,10 +33,12 @@ export const FAQ: { q: string; a: string }[] = [
   { q: "What is the practice round for?", a: "Getting organized: company name, team charter, the free market survey, target segments and regions, and your first product briefs. It isn't scored, but products briefed in the practice round are the ones you sell in Round 1." },
   { q: "How does the scorecard work?", a: "Five measures, each turned into 0 to 100 points against the best firm that round: Market 30% (share in your target segments, weighted by segment size), Customer 20% (product fit, awareness and satisfaction in those segments), Financial 20% (operating profit and return on promotion), Channel 20% (how many target buyers can find you, minus excess partner margin) and Goal accuracy 10% (how close you came to your own goals and sales forecast)." },
   { q: "Segments vs. tiers?", a: "Segments are groups of buyers (for example Older Adults & Caregivers). Tiers are your product line (Good, Better, Best). One tier can serve several segments, and one segment may buy more than one tier. Research tells you which fits." },
-  { q: "Which research should we buy first?", a: "Customer needs tells you what to put in a product. Price willing to pay and Media and channel preferences tell you how to sell it. Competitor benchmark is most useful after Round 1." },
+  { q: "Which research should we buy first?", a: "Customer needs tells you what to put in a product. Price willing to pay, Media preferences and the Channel partner survey tell you how to sell it. Competitor benchmark is most useful after Round 1." },
   { q: "How does market entry work?", a: "Enter a region on the Markets & Channels screen. A distributor is cheap but keeps extra margin and reaches fewer buyers; a local partner costs more; your own subsidiary costs the most but gives the best reach and no extra margin. The entry fee comes out of company capital." },
   { q: "Where does money come from?", a: "Two pots. The marketing budget ($500K in Round 1, $500K in Round 2, then $1M to pace yourself, plus a top-up based on last round's revenue) pays for promotion and research; unspent money carries over. Company capital ($3M to start, plus what you earn) pays for engineering, production, entry and capacity. Both show up in your profit and loss." },
   { q: "Who are the other firms?", a: "Every market has 8 firms. Any spots not taken by student teams are AI rivals. They follow the same rules and the same market model; some are premium, some low-cost, some copy the leader. They get sharper as the game goes on." },
+  { q: "How does promotion work?", a: "On the Price & promotion tab you enter dollars for each product in each region, in four media. Digital & social, Search and Traditional media are consumer ads (pull): they build awareness, most in the segments each medium reaches best. Trade promotion (push) pays your channel partners for displays, shelf space and staff incentives: buyers who shop there meet your brand in the store, and partners stock it more widely. It works only through partners, not your own website. The Promotion results report on the Results tab shows what each dollar bought." },
+  { q: "What is the Creative tab?", a: "Three times in the game (Round 1, Round 4 and the Final round) your team submits links to real creative work: a creative brief and ads, then video ads, then a launch landing page. Your instructor grades it on segment fit, message clarity, creativity, brand consistency and craft. A grade above 3 out of 5 makes your ads work better in the sim from the next round; below 3 makes them work worse." },
   { q: "What are market events?", a: "From Round 3, events like a chip shortage or a privacy scare may hit the market. They'll be announced in the round briefing. (Coming later in the term.)" },
 ];
 
@@ -49,8 +51,8 @@ export const STUDY_INFO: Record<string, { answers: string; contents: string; whe
     concept: "Market segmentation: dividing a market into groups of buyers with different needs.",
   },
   needs: {
-    answers: "Which features does each segment care about most, and which ad messages will land with them?",
-    contents: "Tables of importance scores by segment for every sensor and every component (chip, form, battery, display, materials, water resistance, privacy), plus interest in a premium app plan and which ad claims each segment responds to.",
+    answers: "Which features does each segment care about most, and which ad messages and tones will land with them?",
+    contents: "Focus groups in every segment rate each product feature from \"Doesn't care\" to \"Must have\" (every sensor, chip, form, battery, display, materials, water resistance and privacy), plus interest in a premium app plan, the ad claims and campaign tones each segment responds to, and a one-line ideal product for each segment. Results stay valid all game unless a market event changes buyers' tastes.",
     when: "Before you brief a product (Practice, or Round 3 for a third product), and when choosing ad claims.",
     concept: "Customer needs and product-market fit: designing what a target segment values, not everything.",
   },
@@ -67,10 +69,10 @@ export const STUDY_INFO: Record<string, { answers: string; contents: string; whe
     concept: "Value-based pricing, reference prices and price sensitivity.",
   },
   media: {
-    answers: "Where does each segment shop, and which media reach it best?",
-    contents: "Two tables: the share of each segment buying in each sales channel, and how well digital, search and traditional media reach each segment (1.0 = average).",
-    when: "Before choosing channels in a region and splitting promotion across media.",
-    concept: "Channel strategy and media planning: reaching your target where it already is.",
+    answers: "Which consumer media reach each segment best?",
+    contents: "How well Digital & social, Search and Traditional media reach each segment (1.0 = average), with notes on how to use it. Where buyers shop is in the Channel partner survey.",
+    when: "Before Round 1, when you split your consumer ad dollars across media.",
+    concept: "Media planning: advertise where your target buyers will see it.",
   },
   awareness: {
     answers: "How many buyers know each of your products after last round?",
@@ -91,9 +93,9 @@ export const STUDY_INFO: Record<string, { answers: string; contents: string; whe
     concept: "Competitive analysis and positioning against rivals.",
   },
   partners: {
-    answers: "What margin does each channel partner keep, and how close are you to better terms?",
-    contents: "Starting margins and coverage for every channel, plus your own volume and current margin in each channel and region.",
-    when: "Once you are selling (Round 2 on), to decide where to concentrate volume and earn leverage.",
-    concept: "Channel economics, partner margins and bargaining power.",
+    answers: "Where do your target buyers shop in each region, which partners reach them, and how hard will each type of partner push your brand?",
+    contents: "Where each segment shops in each region; how many buyers each channel reaches there; each partner type's willingness to push when you invest in trade promotion; which firms are already on each partner's shelf; your leverage with each partner and units to the next margin cut; and what a $100 sale pays you in each channel.",
+    when: "Before Round 1, when you choose channels and split promotion between consumer ads and trade promotion, and again when you enter a new region.",
+    concept: "Channel strategy and push vs. pull: partners are customers too.",
   },
 };

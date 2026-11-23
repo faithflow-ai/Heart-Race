@@ -6,11 +6,12 @@ import { DecisionsView } from "@/components/DecisionsView";
 import { normalizeDecision } from "@/sim/product";
 import { ROUNDS } from "@/sim/config";
 import type { FirmDecision, FirmReport, ScoreBreakdown } from "@/sim/types";
+import type { ProForma } from "@/sim/proforma";
 
 export default function FirmView({ params }: { params: Promise<{ id: string; firmId: string }> }) {
   const { id, firmId } = use(params);
   const [round, setRound] = useState<number | null>(null);
-  const [data, setData] = useState<{ firm: { name: string; is_ai: boolean }; round: number; decision: FirmDecision | null; accepted?: Record<string, { briefedRound: number; launchRound: number }>; report: FirmReport | null; score: ScoreBreakdown | null } | null>(null);
+  const [data, setData] = useState<{ firm: { name: string; is_ai: boolean }; round: number; decision: FirmDecision | null; accepted?: Record<string, { briefedRound: number; launchRound: number }>; report: FirmReport | null; score: ScoreBreakdown | null; proforma?: ProForma | null } | null>(null);
   const [rounds, setRounds] = useState<number[]>([]);
   const [current, setCurrent] = useState(0);
   const [view, setView] = useState<"decisions" | "results">("decisions");
@@ -57,7 +58,7 @@ export default function FirmView({ params }: { params: Promise<{ id: string; fir
           )}
         </>
       )}
-      {view === "results" && (data?.report ? <ReportView round={data.round} report={data.report} score={data.score} names={names} /> : <p className="muted">No results yet for this round. Results appear after the round is scored.</p>)}
+      {view === "results" && (data?.report ? <ReportView round={data.round} report={data.report} score={data.score} names={names} proforma={data.proforma} targets={data.decision?.strategy?.targetSegments ?? []} /> : <p className="muted">No results yet for this round. Results appear after the round is scored.</p>)}
     </>
   );
 }

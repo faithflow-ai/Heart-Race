@@ -6,9 +6,9 @@
  */
 import {
   CHANNELS,
+  CHANNEL_TERMS,
   COMPONENTS,
   MARKETING_BUDGET,
-  MEDIA,
   PRODUCTION,
   ROUNDS,
   SEGMENTS,
@@ -18,8 +18,9 @@ import {
   type RegionId,
   type SegmentId,
   type SensorId,
+  type ToneId,
 } from "./config";
-import { REGION_PROFILES, SEGMENT_PROFILES } from "./market";
+import { CHANNEL_PUSH, REGION_PROFILES, SEGMENT_PROFILES } from "./market";
 import { baseDemand, refPrice } from "./engine";
 import { emptyDecision, newProduct, normalizeDecision, quote, regionIds, supportedClaims } from "./product";
 import { hashString, mulberry32 } from "./rng";
@@ -115,17 +116,23 @@ export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
     }
   }
 
-  // --- Media mix -----------------------------------------------------------
-  const reach = { digital: 0, search: 0, traditional: 0 };
-  for (const s of targets) for (const k of Object.keys(reach) as (keyof typeof reach)[]) reach[k] += Math.pow(SEGMENT_PROFILES[s].mediaReach[k], 1 + skill * 3);
-  const rt = reach.digital + reach.search + reach.traditional;
-  d.mediaMix = {
-    digital: Math.round((85 * reach.digital) / rt),
-    search: Math.round((85 * reach.search) / rt),
-    traditional: Math.round((85 * reach.traditional) / rt),
-    trade: 15,
+  // --- Media plan: split each cell's promotion between ads (by reach) and trade (by partner share) ---
+  const mediaSplit = (seg: SegmentId, r: RegionId) => {
+    const reach = SEGMENT_PROFILES[seg].mediaReach;
+    const w = { digital: Math.pow(reach.digital, 1 + skill * 3), search: Math.pow(reach.search, 1 + skill * 3), traditional: Math.pow(reach.traditional, 1 + skill * 3) };
+    const wt = w.digital + w.search + w.traditional;
+    const chans = d.regions[r].channels;
+    const partnerShare = chans.reduce((a, ch) => a + (CHANNEL_TERMS[ch].margin > 0 ? (SEGMENT_PROFILES[seg].channelMix[ch] ?? 0) * CHANNEL_PUSH[ch] : 0), 0);
+    const trade = Math.min(0.5, 0.1 + partnerShare * (0.2 + 0.25 * skill));
+    return { digital: ((1 - trade) * w.digital) / wt, search: ((1 - trade) * w.search) / wt, traditional: ((1 - trade) * w.traditional) / wt, trade };
   };
-  void MEDIA;
+  for (const p of d.products) {
+    if (!p.campaign?.tone || rng() < 0.15 * skill) {
+      const tf = SEGMENT_PROFILES[p.targetSegment].toneFit;
+      const tones = (Object.keys(tf) as ToneId[]).sort((a, b) => tf[b] - tf[a] + noise(0.6));
+      p.campaign = { message: `${p.name}: made for ${SEGMENTS.find((x) => x.id === p.targetSegment)!.name}.`, tone: tones[0], segment: p.targetSegment };
+    }
+  }
 
   // --- Marketing budget pacing --------------------------------------------
   const pot =
@@ -176,7 +183,10 @@ export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
     const inv = (fs?.inventory[p.id]?.[r] ?? []).reduce((a, l) => a + l.units, 0);
     const production = Math.max(0, Math.round(forecast * (1.05 + noise(0.25)) - inv));
     totalProd += production;
-    plan[r] = { price, forecast, production, promotion: Math.round((promoBudget * c.w) / wTot) };
+    const promo = Math.round((promoBudget * c.w) / wTot);
+    const split = mediaSplit(p.targetSegment, r);
+    const media = { digital: Math.round(promo * split.digital), search: Math.round(promo * split.search), traditional: Math.round(promo * split.traditional), trade: Math.round(promo * split.trade) };
+    plan[r] = { price, forecast, production, media, promotion: media.digital + media.search + media.traditional + media.trade };
   }
   // Keep within capacity (+ a little overtime).
   const cap = (fs?.capacity ?? PRODUCTION.startCapacity) * 1.1;
@@ -206,7 +216,7 @@ function targetDemand(targets: SegmentId[], r: RegionId, round: number) {
 }
 
 /** Choose components for a segment: value of each option against its cost. */
-function designFor(seg: SegmentId, id: string, name: string, skill: number, noise: (s: number) => number, style: AiStyle): ProductSpec {
+export function designFor(seg: SegmentId, id: string, name: string, skill: number, noise: (s: number) => number, style: AiStyle): ProductSpec {
   const prof = SEGMENT_PROFILES[seg];
   const p = newProduct(id, 1);
   p.name = name;

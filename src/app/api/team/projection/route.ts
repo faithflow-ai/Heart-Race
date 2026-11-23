@@ -8,5 +8,5 @@ export const POST = handle(async () => {
   const user = await requireUser();
   const { game, firm } = await studentContext(user);
   const { data } = await getDecision(firm.id, game.current_round);
-  return { projection: projection(game, await getFirms(game.id), await latestResult(game), firm.id, data) };
+  return { projection: await projection(game, await getFirms(game.id), await latestResult(game), firm.id, data) };
 });

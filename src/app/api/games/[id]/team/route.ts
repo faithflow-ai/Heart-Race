@@ -1,5 +1,6 @@
 import { HttpError, requireInstructor } from "@/lib/auth";
-import { getDecision, getFirms, getResult } from "@/lib/game";
+import { getDecision, getFirms, getResult, proFormaFor, settingsOf } from "@/lib/game";
+import { normalizeDecision } from "@/sim/product";
 import { instructorGame } from "@/lib/access";
 import { handle } from "@/lib/http";
 
@@ -14,5 +15,11 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
   const res = round < g.current_round ? await getResult(g.id, round) : null;
   const decision = res ? res.decisions[firm.id] : firm.is_ai ? null : (await getDecision(firm.id, round)).data;
   const accepted = res ? Object.fromEntries(Object.values(res.state.firms[firm.id]?.products ?? {}).map((p) => [p.spec.id, { briefedRound: p.briefedRound, launchRound: p.launchRound }])) : {};
-  return { firm, round, decision, accepted, report: res?.reports[firm.id] ?? null, score: res?.scores[firm.id] ?? null };
+  const rep = res?.reports[firm.id];
+  let proforma = null;
+  if (res && rep && decision && round >= 1) {
+    const prev = await getResult(g.id, round - 1);
+    proforma = proFormaFor(round, normalizeDecision(decision), prev?.state.firms[firm.id], settingsOf(g), rep.budget.start + rep.budget.release + rep.budget.earned);
+  }
+  return { firm, round, decision, accepted, report: rep ?? null, score: res?.scores[firm.id] ?? null, proforma };
 });

@@ -1,7 +1,9 @@
 "use client";
-import { CHANNELS, REGIONS, ROUNDS, SCORECARD_WEIGHTS, SEGMENTS, type ScoreKey } from "@/sim/config";
+import { CHANNELS, REGIONS, ROUNDS, SCORECARD_WEIGHTS, SEGMENTS, type ScoreKey, type SegmentId } from "@/sim/config";
 import type { FirmReport, ScoreBreakdown } from "@/sim/types";
 import { money, num, pct } from "./client";
+import { PromoResults, ProjectedVsActual } from "./PromoResults";
+import type { ProForma } from "@/sim/proforma";
 
 const SCORE_LABELS: Record<ScoreKey, string> = { market: "Market", customer: "Customer", financial: "Financial", channel: "Channel", goals: "Goal accuracy" };
 const segName = (id: string) => SEGMENTS.find((s) => s.id === id)?.name ?? id;
@@ -16,7 +18,7 @@ export interface LeaderRow {
   rank: number | null;
 }
 
-export function ReportView({ round, report, score, leaderboard, names }: { round: number; report: FirmReport; score: ScoreBreakdown | null; leaderboard?: LeaderRow[]; names: Record<string, string> }) {
+export function ReportView({ round, report, score, leaderboard, names, proforma, targets = [] }: { round: number; report: FirmReport; score: ScoreBreakdown | null; leaderboard?: LeaderRow[]; names: Record<string, string>; proforma?: ProForma | null; targets?: SegmentId[] }) {
   const r = report;
   const pnl = r.pnl;
   const pn = (id: string) => names[id] ?? id;
@@ -152,6 +154,9 @@ export function ReportView({ round, report, score, leaderboard, names }: { round
               </div>
             </div>
           </div>
+
+          {proforma && <ProjectedVsActual pf={proforma} pnl={pnl} />}
+          {r.promo && <PromoResults promo={r.promo} names={names} targets={targets} />}
 
           <div className="panel">
             <h2 style={{ marginTop: 0 }}>Supply: forecast, production and sales</h2>

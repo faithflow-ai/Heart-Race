@@ -9,6 +9,7 @@ import type {
   SegmentId,
   SensorId,
   StudyId,
+  ToneId,
 } from "./config";
 
 export type Tier = "good" | "better" | "best";
@@ -37,6 +38,16 @@ export interface ProductSpec {
   commission: boolean;
   /** true = stop selling this product. */
   retire: boolean;
+  /** The product's ad campaign. Can change every round; carries forward if not edited. */
+  campaign: Campaign;
+}
+
+export interface Campaign {
+  /** The single main message (the instructor reads it; the sim doesn't score the wording). */
+  message: string;
+  tone: ToneId | "";
+  /** The segment the campaign speaks to. */
+  segment: SegmentId | "";
 }
 
 export interface RegionDecision {
@@ -51,7 +62,9 @@ export interface ProductRegionPlan {
   production: number;
   /** Units the team expects to sell. */
   forecast: number;
-  /** Promotion dollars for this product in this region. */
+  /** Promotion dollars by medium for this product in this region. */
+  media: Record<MediaId, number>;
+  /** Total promotion for this product in this region (the sum of media; kept in step automatically). */
   promotion: number;
 }
 
@@ -81,8 +94,8 @@ export interface FirmDecision {
   products: ProductSpec[];
   regions: Record<RegionId, RegionDecision>;
   plan: Record<string, Record<RegionId, ProductRegionPlan>>;
-  /** Promotion split across media, percent (sums to 100). */
-  mediaMix: Record<MediaId, number>;
+  /** Legacy (before Nov 2026): one percent split across media for the whole team. Old decisions are converted to dollars per medium. */
+  mediaMix?: Record<MediaId, number>;
   /** Units of per-round capacity to add (online next round). */
   capacityExpansion: number;
   /** Round reflection (written, graded by the instructor). */
@@ -129,6 +142,8 @@ export interface FirmState {
   channelsOpen: Partial<Record<RegionId, ChannelId[]>>;
   /** awareness[productId][region][segment] 0..1 */
   awareness: Record<string, Partial<Record<RegionId, Partial<Record<SegmentId, number>>>>>;
+  /** Awareness this round including in-store push from trade promotion: [productId][region][segment] 0..1. Reset each round. */
+  shelfAwareness?: Record<string, Partial<Record<RegionId, Partial<Record<SegmentId, number>>>>>;
   satisfaction: Record<string, number>;
   inventory: Record<string, Partial<Record<RegionId, InventoryLot[]>>>;
   /** Cumulative units through each channel in each region (earns leverage). */
@@ -205,6 +220,8 @@ export interface FirmReport {
   capital: { start: number; end: number };
   capacity: { capacity: number; used: number; overtime: number; nextRound: number };
   concerns: { title: string; detail: string; fix: string }[];
+  /** What promotion bought, by product and region. */
+  promo?: PromoResult[];
   drivers: { productId: string; segment: SegmentId; shareNow: number; sharePrev: number; factors: { name: string; change: number }[] }[];
   notes: string[];
 }
@@ -221,4 +238,17 @@ export interface RoundResult {
   };
   /** Decisions as used (after carry-forward), for audit and rerun. */
   decisions: Record<string, FirmDecision>;
+}
+
+/** Promotion results for one product in one region. */
+export interface PromoResult {
+  productId: string;
+  region: RegionId;
+  /** Dollars actually spent by medium (after any over-budget scaling). */
+  spend: Record<MediaId, number>;
+  /** Awareness by segment (0..1) before and after this round's ads, and each ad medium's share of the gain. */
+  segments: Partial<Record<SegmentId, { before: number; after: number; gain: number; byMedium: Record<"digital" | "search" | "traditional", number>; campaign: number }>>;
+  /** Trade promotion: in-store push (0..1) and stocking reach without and with trade promotion, by partner channel. */
+  channels: Partial<Record<ChannelId, { push: number; reachBase: number; reachNow: number }>>;
+  campaignSegment: SegmentId | "";
 }

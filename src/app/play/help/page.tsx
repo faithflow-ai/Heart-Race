@@ -1,4 +1,6 @@
-import { ROUNDS, SCORECARD_WEIGHTS, SEGMENTS } from "@/sim/config";
+import { ROUNDS, SCORECARD_WEIGHTS } from "@/sim/config";
+import { SCENARIO } from "@/sim/lessons";
+import { Markdown } from "@/components/Markdown";
 import { FAQ, ROUND_FOCUS } from "@/sim/content";
 
 export default function HelpPage() {
@@ -7,10 +9,13 @@ export default function HelpPage() {
       <h1>How Heart Race works</h1>
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>The scenario</h2>
-        <p>
-          Your team runs a new smart health wearables company: rings, bands and watches that track heart rate, sleep, activity and more. You compete with the other teams in your class and with AI rivals, eight firms in all, across North America, Europe, Asia-Pacific and Latin America.
-        </p>
-        <p>Buyers fall into five segments, each with its own needs, price expectations and favorite places to shop: {SEGMENTS.map((s) => s.name).join(", ")}.</p>
+        <p className="small muted" style={{ marginTop: 0 }}>Click a heading to open it. Start with the first three, then read the rest before you make your first decisions.</p>
+        {SCENARIO.map((s, i) => (
+          <details key={s.title} open={i === 0} style={{ marginBottom: 8 }}>
+            <summary><b>{i + 1}. {s.title}</b></summary>
+            <Markdown text={s.body} />
+          </details>
+        ))}
       </div>
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>Rounds and deadlines</h2>

@@ -1,9 +1,11 @@
 import { AI, DEFAULT_SETTINGS, MARKETING_BUDGET, ROUNDS, STUDIES, TEAM_NAMES, UNLOCKS, type AiStyle, type GameSettings, type StudyId } from "@/sim/config";
 import { processRound } from "@/sim/engine";
-import { emptyDecision, normalizeDecision } from "@/sim/product";
+import { cellPromo, emptyDecision, normalizeDecision, syncPromotion } from "@/sim/product";
+import { proForma } from "@/sim/proforma";
 import { generateStudy } from "@/sim/research";
 import { defaultAiLevel, runRound } from "@/sim/run";
-import type { FirmDecision, FirmMeta, RoundResult } from "@/sim/types";
+import type { FirmDecision, FirmMeta, FirmState, RoundResult } from "@/sim/types";
+import { creativeBoosts } from "./creative";
 import { HttpError, type User } from "./auth";
 import { newId, one, q } from "./db";
 import { nextDeadline } from "./time";
@@ -218,6 +220,7 @@ export async function applyOps(g: GameRow, firmId: string, round: number, user: 
     }
   }
   if (!log.length) return { data, changed: 0 };
+  syncPromotion(data);
   await q("update decisions set data = $1, updated_at = now(), updated_by = $2 where firm_id = $3 and round = $4", [JSON.stringify(data), user.id, firmId, round]);
   for (const l of log) {
     // Merge rapid edits of the same field by the same person into one log line.
@@ -250,7 +253,7 @@ export function budgetEstimate(g: GameRow, latest: RoundResult | null, firmId: s
   }
   const research = d.research.reduce((a, st) => a + (round === 0 || !("practiceOnly" in STUDIES[st]) ? STUDIES[st].cost : 0), 0);
   let promotion = 0;
-  for (const pid of Object.keys(d.plan)) for (const r of Object.values(d.plan[pid] ?? {})) promotion += Math.max(0, r?.promotion ?? 0);
+  for (const pid of Object.keys(d.plan)) for (const r of Object.values(d.plan[pid] ?? {})) promotion += cellPromo(r);
   if (round === 0) promotion = 0;
   const available = carried + release + earned;
   const futureReleases = Object.entries(MARKETING_BUDGET.releases).filter(([r]) => Number(r) > round).reduce((a, [, v]) => a + v, 0);
@@ -307,7 +310,7 @@ async function runAndStore(g: GameRow, round: number, isRerun: boolean) {
       metas.find((m) => m.id === f.id)!.name = f.name;
     }
   }
-  const result = runRound({ round, seed: g.seed, firms: metas, prevResult, studentDecisions, carriedForward: carried, settings: settingsOf(g) });
+  const result = runRound({ round, seed: g.seed, firms: metas, prevResult, studentDecisions, carriedForward: carried, settings: settingsOf(g), creativeBoost: await creativeBoosts(g.id, round) });
   const json = JSON.stringify(result);
   if (isRerun) await q("update results set data = $1, processed_at = now(), run_count = run_count + 1 where game_id = $2 and round = $3", [json, g.id, round]);
   else await q("insert into results (game_id, round, data) values ($1,$2,$3) on conflict (game_id, round) do update set data = excluded.data, processed_at = now()", [g.id, round, json]);
@@ -378,15 +381,36 @@ export async function processDue(gameId?: string) {
 }
 
 /** Projected results for a team's draft, assuming every rival repeats last round. */
-export function projection(g: GameRow, firms: FirmRow[], latest: RoundResult | null, firmId: string, draft: FirmDecision) {
+export async function projection(g: GameRow, firms: FirmRow[], latest: RoundResult | null, firmId: string, draft: FirmDecision) {
   const round = g.current_round;
   if (round < 1) return null;
+  const creativeBoost = await creativeBoosts(g.id, round);
   const metas = firms.map((f) => firmMeta(f, round));
   const decisions: Record<string, FirmDecision | null> = {};
   for (const f of metas) decisions[f.id] = f.id === firmId ? draft : (latest?.state.firms[f.id]?.lastDecision ?? null);
-  const res = processRound({ round, seed: g.seed + 999, firms: metas, prevState: latest?.state ?? null, prevResult: latest, decisions, settings: settingsOf(g) });
+  const res = processRound({ round, seed: g.seed + 999, firms: metas, prevState: latest?.state ?? null, prevResult: latest, decisions, settings: settingsOf(g), creativeBoost });
   const rep = res.reports[firmId];
   return { pnl: rep.pnl, supply: rep.supply, byProduct: rep.byProduct, notes: rep.notes, capacity: rep.capacity, budget: rep.budget };
 }
 
 export const emptyFor = emptyDecision;
+
+/** Pro forma P&L for a decision, from the firm's state before that round. */
+export function proFormaFor(round: number, d: FirmDecision, fs: FirmState | null | undefined, settings: GameSettings, marketingAvailable: number) {
+  const committed = Object.values(fs?.products ?? {});
+  const inventory: Record<string, Partial<Record<string, number>>> = {};
+  for (const [pid, regs] of Object.entries(fs?.inventory ?? {})) inventory[pid] = Object.fromEntries(Object.entries(regs).map(([r, lots]) => [r, (lots ?? []).reduce((a, l) => a + l.units, 0)]));
+  return proForma({
+    round,
+    decision: d,
+    unitCost: Object.fromEntries(committed.map((p) => [p.spec.id, p.quotedUnitCost])),
+    sellable: committed.filter((p) => !p.retired && p.launchRound <= round).map((p) => p.spec.id),
+    regionsEntered: fs?.regions ?? {},
+    channelsOpen: fs?.channelsOpen ?? {},
+    committed: committed.map((p) => p.spec.id),
+    capital: fs?.capital ?? settings.startingCapital,
+    marketingAvailable,
+    capacity: (fs?.capacity ?? 70_000) + (fs?.pendingCapacity ?? 0),
+    inventory,
+  });
+}
