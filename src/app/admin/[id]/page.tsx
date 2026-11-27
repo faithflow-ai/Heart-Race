@@ -40,10 +40,16 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
   const [o, setO] = useState<Overview | null>(null);
   const [msg, setMsg] = useState<{ kind: "good" | "bad"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [flagCount, setFlagCount] = useState<Record<string, number>>({});
   const load = useCallback(() => api<Overview>(`/api/games/${id}`).then(setO).catch((e) => setMsg({ kind: "bad", text: e.message })), [id]);
   useEffect(() => {
     load();
   }, [load]);
+  useEffect(() => {
+    api<{ flags: { firmId: string }[] }>(`/api/games/${id}/activity`)
+      .then((a) => setFlagCount(a.flags.reduce<Record<string, number>>((m, f) => ({ ...m, [f.firmId]: (m[f.firmId] ?? 0) + 1 }), {})))
+      .catch(() => {});
+  }, [id, o?.game.current_round]);
 
   async function act(fn: () => Promise<unknown>, ok: string) {
     setBusy(true);
@@ -72,6 +78,8 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
         <h1 style={{ margin: 0 }}>{g.name}</h1>
         <span className="badge accent" style={{ fontSize: 16, padding: "4px 12px" }}>Class code: {g.code}</span>
         <span className="spacer" />
+        <a href={`/admin/${id}/debrief`}>Debrief (project in class)</a>
+        <a href={`/admin/${id}/activity`}>Activity and flags</a>
         <a href={`/admin/${id}/creative`}>Grade creative work</a>
         <a href="/admin">← All classes</a>
       </div>
@@ -145,7 +153,10 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
           <tbody>
             {students.map((f) => (
               <tr key={f.id}>
-                <td style={{ width: 180 }}><input type="text" defaultValue={f.name} onBlur={(e) => e.target.value !== f.name && patchFirm({ firmId: f.id, name: e.target.value })} /></td>
+                <td style={{ width: 180 }}>
+                  <input type="text" defaultValue={f.name} onBlur={(e) => e.target.value !== f.name && patchFirm({ firmId: f.id, name: e.target.value })} />
+                  {flagCount[f.id] ? <a href={`/admin/${id}/activity`} className="badge warn" style={{ marginTop: 4 }} title="Unusual activity flags: a reason to look closer, not proof">{flagCount[f.id]} activity flag{flagCount[f.id] === 1 ? "" : "s"}</a> : null}
+                </td>
                 <td>
                   {!f.members.length && <span className="muted small">Nobody yet</span>}
                   {f.members.map((m) => (

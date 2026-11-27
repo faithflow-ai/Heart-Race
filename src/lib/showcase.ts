@@ -252,7 +252,7 @@ export async function resetShowcase(instructor: User, gameId: string): Promise<{
   for (const id of ids) {
     const fids = (await getFirms(id)).map((f) => f.id);
     await q("delete from results where game_id = $1", [id]);
-    for (const table of ["decisions", "change_log", "research_reports", "creative_submissions"])
+    for (const table of ["decisions", "change_log", "research_reports", "creative_submissions", "activity_signals"])
       await q(`delete from ${table} where firm_id = any($1)`, [fids]);
     const gi = (await getGame(id))!;
     const si = showcaseInfo(gi)!;
