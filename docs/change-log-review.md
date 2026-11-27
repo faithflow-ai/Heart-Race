@@ -108,6 +108,16 @@
   - **Needs a Learn lesson** on creative briefs and campaigns (what a brief contains, message and tone by segment, social, search and video ad formats, landing pages), plus a short assignment sheet for each milestone and the rubric. The lesson will be added to the drafts later.
 
 
+## Queued Nov 27: showcase guest notes and per-segment goals (not built, wait for go)
+
+- [P1] Showcase – Guest banner in View as student: a strip on every student screen that says "You're viewing [Team] as a guest. Everything here was entered by this team's students. Read only." with a link back to the class screen. (Today it's hard to tell that these are the team's own choices.)
+- [P1] Showcase – "About this screen" side note (guest only, can be collapsed): on each Decisions screen and on Research, Creative and Results, 2 or 3 plain lines on what students decide there, plus a summary of this team's choices that round. Example on Strategy & goals: "CareBand targets Older Adults & Caregivers and Everyday Wellness in North America and Europe, posture: niche. Goals: 18% share, $4.2M revenue." Built from the team's saved decisions, so it stays correct for any round.
+- [P2] Showcase – Start here panel on the guest's class screen: 3 steps (look at Class results, open Decisions & results for one team, then View as student), the 4 team strategies in one line each, and a link to the tour document.
+- [P1] Goals – Separate market share goal for each target segment: when a team targets more than one segment, the Goals section shows one share goal per target segment instead of a single number, and the Results goal table shows goal vs. actual for each segment.
+  - Scoring change: today goal accuracy averages how close the team came on each goal it set (share, revenue, margin, awareness, satisfaction), and that is half of the 10-point Goal and forecast accuracy score (forecast accuracy is the other half). With the change, the share goal's closeness becomes the average across the team's segment goals, so share still counts as one goal. A team with 3 segments isn't weighted more heavily than a team with 1, and a team can't hide a miss in one segment behind a hit in another.
+  - Open choice for Victor: weight each segment equally (simplest to explain) or by segment size (a miss in a big segment counts more). Recommend equal.
+  - The Market score itself doesn't change (it's already share across target segments, weighted by size); Results would also show share by segment next to the goals.
+
 ## Later batch (queued Nov 23, not in the current build)
 
 - [P2] Instructor – Unusual activity flags: the class screen flags agent-like patterns for each team and says why each one was flagged, with an optional email to the instructor once email sending is set up. Examples: every input entered within seconds, only one teammate ever active, rapid bursts of edits at identical speed, edits at odd hours, no round reflection. Wording must make clear a flag is a prompt to look closer, not proof that a student used an AI agent
