@@ -115,7 +115,7 @@
 - [P2] Showcase – Start here panel on the guest's class screen: 3 steps (look at Class results, open Decisions & results for one team, then View as student), the 4 team strategies in one line each, and a link to the tour document.
 - [P1] Goals – Separate market share goal for each target segment: when a team targets more than one segment, the Goals section shows one share goal per target segment instead of a single number, and the Results goal table shows goal vs. actual for each segment.
   - Scoring change: today goal accuracy averages how close the team came on each goal it set (share, revenue, margin, awareness, satisfaction), and that is half of the 10-point Goal and forecast accuracy score (forecast accuracy is the other half). With the change, the share goal's closeness becomes the average across the team's segment goals, so share still counts as one goal. A team with 3 segments isn't weighted more heavily than a team with 1, and a team can't hide a miss in one segment behind a hit in another.
-  - Open choice for Victor: weight each segment equally (simplest to explain) or by segment size (a miss in a big segment counts more). Recommend equal.
+  - Decided (Victor, Nov 27): each segment goal is weighted equally, not by segment size.
   - The Market score itself doesn't change (it's already share across target segments, weighted by size); Results would also show share by segment next to the goals.
 
 ## Later batch (queued Nov 23, not in the current build)
