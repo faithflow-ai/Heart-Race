@@ -1,5 +1,5 @@
 import { AI, DEFAULT_SETTINGS, MARKETING_BUDGET, ROUNDS, STUDIES, TEAM_NAMES, UNLOCKS, type AiStyle, type GameSettings, type StudyId } from "@/sim/config";
-import { processRound } from "@/sim/engine";
+import { processRound, spendingLimit } from "@/sim/engine";
 import { cellPromo, emptyDecision, normalizeDecision, syncPromotion } from "@/sim/product";
 import { proForma } from "@/sim/proforma";
 import { generateStudy } from "@/sim/research";
@@ -135,6 +135,8 @@ export function carryForward(d: FirmDecision): FirmDecision {
   n.reflection = "";
   n.ready = false;
   for (const p of n.products) p.commission = false;
+  // An exit happens once: next round starts with the region closed.
+  for (const rd of Object.values(n.regions ?? {})) if (rd.exit) Object.assign(rd, { exit: false, enter: false, channels: [] });
   return n;
 }
 
@@ -257,7 +259,8 @@ export function budgetEstimate(g: GameRow, latest: RoundResult | null, firmId: s
   if (round === 0) promotion = 0;
   const available = carried + release + earned;
   const futureReleases = Object.entries(MARKETING_BUDGET.releases).filter(([r]) => Number(r) > round).reduce((a, [, v]) => a + v, 0);
-  return { carried, release, earned, available, research, promotion, remaining: available - research - promotion, futureReleases, capital: fs?.capital ?? s.startingCapital, capacity: (fs?.capacity ?? 0) + (fs?.pendingCapacity ?? 0) || 70_000 };
+  const limit = round >= 1 ? spendingLimit({ lastRevenue: fs?.lastRevenue ?? 0 }, s) : 0;
+  return { carried, release, earned, available, research, promotion, remaining: available - research - promotion, futureReleases, limit, loan: fs?.loan ?? 0, capital: fs?.capital ?? s.startingCapital, capacity: (fs?.capacity ?? 0) + (fs?.pendingCapacity ?? 0) || 70_000 };
 }
 
 export async function buyStudy(g: GameRow, firmId: string, user: User, study: StudyId) {
@@ -411,6 +414,7 @@ export function proFormaFor(round: number, d: FirmDecision, fs: FirmState | null
     capital: fs?.capital ?? settings.startingCapital,
     marketingAvailable,
     capacity: (fs?.capacity ?? 70_000) + (fs?.pendingCapacity ?? 0),
+    loan: fs?.loan ?? 0,
     inventory,
   });
 }

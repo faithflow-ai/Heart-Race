@@ -195,11 +195,19 @@ export const REGION_PROFILES: Record<
 /**
  * Trade promotion (push): money paid to partners for displays, co-op ads, staff incentives and
  * better stocking. In each partner channel it creates "in-store push" (buyers who shop there meet
- * the brand at the shelf, like awareness) and widens stocking. Push lasts only the round it's paid for.
+ * the brand at the shelf, like awareness). Partners also stock less of a brand that gives them no trade support (see stockDependence). Push lasts only the round it's paid for.
  *   push = maxPush x channel response x spend / (spend + halfSaturationSpend)
  * Your own website has no partner, so trade promotion does nothing there.
  */
-export const TRADE_PROMO = { maxPush: 0.65, halfSaturationSpend: 100_000, maxPushCap: 0.9, stockLift: 0.3 };
+export const TRADE_PROMO = {
+  maxPush: 0.65,
+  halfSaturationSpend: 100_000,
+  maxPushCap: 0.9,
+  /** Share of a partner's usual stocking that depends on trade support (times the partner's response, capped at 1). With no trade money, mass retail stocks only half as widely. */
+  stockDependence: 0.5,
+  /** Trade spend (per product per region) that wins back half of that lost stocking. */
+  stockHalfSpend: 100_000,
+};
 
 /** How strongly each type of partner responds to trade promotion (1 = average). The Channel partner survey reveals it in words. */
 export const CHANNEL_PUSH: Record<ChannelId, number> = {

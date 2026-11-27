@@ -17,7 +17,7 @@ export interface TeamData {
   rivals: { id: string; name: string }[];
   decision: FirmDecision;
   updatedAt: string | null;
-  budget: { carried: number; release: number; earned: number; available: number; research: number; promotion: number; remaining: number; futureReleases: number; capital: number; capacity: number };
+  budget: { carried: number; release: number; earned: number; available: number; research: number; promotion: number; remaining: number; futureReleases: number; limit: number; loan: number; capital: number; capacity: number };
   committed: { id: string; launchRound: number; retired: boolean; unitCost: number }[];
   regionsEntered: Record<string, string>;
   channelsOpen: Record<string, string[]>;

@@ -185,7 +185,7 @@ Added Nov 27, from the review of Victor's Capsim account (look book item 9):
 - [P2] Decisions – "Last edited by [name], [day time]" on each decision step
 - [P2] App-wide – Design rules: flat charts only (no 3D); map labels never overlap; units always shown ($250K); no raw system names or zero rows for products a team doesn't have; specific button labels (never just "Continue"); one look and one address, no reports in scrolling frames; empty tables explain why and what to do next
 
-## Nov 27: Money and unit math tuning (queued, wait for Victor's go)
+## Nov 27: Money and unit math tuning (Victor said go Nov 27; **built in the economics update PR, waiting for merge**)
 
 Found by running a simulated class (`npm run balance`). Company capital in the code is $3M (not $4M), plus the $2M marketing-only budget and earned top-ups.
 
@@ -193,7 +193,7 @@ Found by running a simulated class (`npm run balance`). Company capital in the c
 - [P1] Economy – **Victor approved Nov 27 (wait for go to build): HQ emergency loan at about 3% interest per round when capital would go below zero, with a warning.** Capital never runs out in a meaningful way: firms end with $8M-$37M and nothing to use it on, and production is never checked against cash, so a team can overproduce into negative capital with no consequence beyond being blocked from new products and expansion. Proposed: if capital would go below zero, Vibe Electronics HQ advances an emergency loan with interest (about 3% per round, charged to profit), shown with a clear warning on Results. Optional: an idle-cash charge or a "return cash to HQ" choice so a big cash pile isn't free
 - [P2] Economy – Starting numbers otherwise check out: keep $3M capital and the $2M marketing budget. Marketing runs about 9-17% of revenue across rounds, which matches real wearable brands (about 10-20%). Round 1 is the tight round (lowest firm capital about $2.2M), which is the right place for pressure
 
-## Nov 27: Engine and scoring audit (queued, wait for Victor's go)
+## Nov 27: Engine and scoring audit (Victor said go Nov 27; **built in the economics update PR, waiting for merge**, except the dropped item)
 
 Tested by having one team play variations of the same strategy against 7 rivals, 3 market draws each. Good news: no single strategy wins. Pricing 30% low lost money and finished near last, cutting promotion 90% ranked near last, and doubling promotion added nothing (diminishing returns work).
 

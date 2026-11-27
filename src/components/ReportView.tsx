@@ -127,10 +127,22 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
                 <div>Research</div><div>-{money(pnl.research)}</div>
                 <div>Engineering fees</div><div>-{money(pnl.devFees)}</div>
                 <div>Region entry and channel setup</div><div>-{money(pnl.entryFees + pnl.channelSetup)}</div>
+                {(pnl.exitFees ?? 0) > 0 && <><div>Region exit fees</div><div>-{money(pnl.exitFees ?? 0)}</div></>}
                 <div>Capacity expansion</div><div>-{money(pnl.expansion)}</div>
                 <div>Overhead</div><div>-{money(pnl.overhead)}</div>
+                {(pnl.interest ?? 0) > 0 && <><div>Interest on HQ loan</div><div>-{money(pnl.interest ?? 0)}</div></>}
                 <div><b>Operating profit</b></div><div><b style={{ color: pnl.operatingProfit < 0 ? "var(--bad)" : "var(--good)" }}>{money(pnl.operatingProfit)}</b></div>
+                {pnl.scoredProfit !== undefined && (
+                  <>
+                    <div className="muted">Profit for your Financial score</div>
+                    <div className="muted">{money(pnl.scoredProfit)}</div>
+                  </>
+                )}
               </div>
+              {pnl.scoredProfit !== undefined && (
+                <p className="small muted">The Financial score leaves out one-time costs (engineering fees, region entry and exit, channel setup) and spreads capacity expansion over 4 rounds{(pnl.expansionAmortized ?? 0) > 0 ? ` (${money(pnl.expansionAmortized ?? 0)} this round)` : ""}.</p>
+              )}
+              {(r.capital.loan ?? 0) > 0 && <div className="notice warn">HQ loan owed: {money(r.capital.loan ?? 0)}.</div>}
             </div>
             <div className="panel">
               <h2 style={{ marginTop: 0 }} id="goals">Goals vs. actual</h2>

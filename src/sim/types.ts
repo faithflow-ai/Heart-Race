@@ -52,6 +52,8 @@ export interface Campaign {
 
 export interface RegionDecision {
   enter: boolean;
+  /** Exit a region already entered (one-time fee; ends its overhead). Missing in older decisions. */
+  exit?: boolean;
   entryMode: EntryModeId;
   channels: ChannelId[];
 }
@@ -143,6 +145,10 @@ export interface FirmState {
   marketingPot: number;
   lastTopUp: number;
   lastRevenue: number;
+  /** HQ emergency loan outstanding (missing in older states = 0). */
+  loan?: number;
+  /** Capacity expansion still being amortized for scoring: amount and rounds of charge left. */
+  expansionAmort?: { amount: number; roundsLeft: number }[];
   capacity: number;
   pendingCapacity: number;
   products: Record<string, ProductState>;
@@ -201,8 +207,16 @@ export interface PnL {
   entryFees: number;
   channelSetup: number;
   expansion: number;
+  /** One-time fees for leaving regions (missing in older results). */
+  exitFees?: number;
+  /** Interest on the HQ emergency loan (missing in older results). */
+  interest?: number;
   overhead: number;
   operatingProfit: number;
+  /** Profit used for the Financial score: before one-time costs, with expansion spread over 4 rounds (missing in older results). */
+  scoredProfit?: number;
+  /** This round's share of capacity expansion spending (for scoredProfit). */
+  expansionAmortized?: number;
 }
 
 export interface ScoreBreakdown {
@@ -227,7 +241,9 @@ export interface FirmReport {
   goals: { key: string; label: string; goal: number | null; actual: number }[];
   forecastAccuracy: number;
   budget: { start: number; release: number; earned: number; spent: number; end: number };
-  capital: { start: number; end: number };
+  capital: { start: number; end: number; borrowed?: number; repaid?: number; loan?: number };
+  /** Promotion + research limit this round (missing in older results). */
+  spendLimit?: number;
   capacity: { capacity: number; used: number; overtime: number; nextRound: number };
   concerns: { title: string; detail: string; fix: string }[];
   /** What promotion bought, by product and region. */

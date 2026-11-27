@@ -215,12 +215,12 @@ export const PRODUCT_COSTS = {
   lateWindowFrom: 4,
   lateWindowMultiplier: 1.5,
   leadTimeRounds: 1,
-  /** Each doubling of cumulative units cuts unit cost by this much... */
-  learningRate: 0.1,
-  /** ...down to this share of the starting cost. */
-  learningFloor: 0.6,
-  /** Industry component prices fall this much per round. */
-  industryCostDeclinePerRound: 0.03,
+  /** Volume milestones (published to students): when a product's total units made reach each number, its unit cost drops... */
+  volumeMilestones: [50_000, 150_000, 300_000],
+  /** ...by this share of the starting cost (5 points each, so the lowest is 85%). */
+  milestoneCut: 0.05,
+  /** Industry component prices fall this much per round (published to students). */
+  industryCostDeclinePerRound: 0.02,
   /** Subscription: platform cost per subscriber per round (a round = a quarter). */
   subscriptionPlatformCost: 3,
 };
@@ -294,6 +294,14 @@ export const FINANCE = {
   startingCapital: 3_000_000,
   overheadPerRound: 150_000,
   overheadPerRegion: 40_000,
+  /** If capital ends a round below zero, HQ lends the difference at this interest per round (charged to profit). */
+  loanInterestPerRound: 0.03,
+  /** Loans are repaid automatically from capital above this cushion. */
+  loanRepayCushion: 500_000,
+  /** Exiting a region costs this share of its entry fee, once. */
+  exitFeeShare: 0.5,
+  /** Capacity expansion is spread over this many rounds when scoring profit (amortization). */
+  expansionAmortRounds: 4,
 };
 
 // ---------------------------------------------------------------------------
@@ -311,6 +319,10 @@ export const MARKETING_BUDGET = {
   earnedCapGrowth: 0.5,
   earnedCapAbsolute: 1_500_000,
   carryOver: true,
+  /** Per-round spending limit on promotion + research: the greater of this floor... */
+  roundCapFloor: 500_000,
+  /** ...or this share of last round's revenue. */
+  roundCapRevenueShare: 0.2,
 };
 
 // ---------------------------------------------------------------------------

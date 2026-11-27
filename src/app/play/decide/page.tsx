@@ -10,6 +10,7 @@ import {
   CLAIMS,
   COMPONENTS,
   ENTRY_MODES,
+  FINANCE,
   MEDIA,
   PRODUCTION,
   PRODUCT_RULES,
@@ -158,6 +159,7 @@ function Decide() {
               <div className={`v ${t.budget.remaining < 0 ? "neg" : ""}`}>{money(t.budget.remaining, true)}</div>
               <div className="meter"><i style={{ width: `${Math.max(0, Math.min(100, t.budget.available > 0 ? ((t.budget.available - Math.max(0, t.budget.remaining)) / t.budget.available) * 100 : 0))}%` }} /></div>
               <div className="s">{money(t.budget.promotion + t.budget.research, true)} of {money(t.budget.available, true)} planned</div>
+              <div className={`s ${t.budget.promotion + t.budget.research > t.budget.limit ? "neg" : ""}`}>This round&apos;s spending limit: {money(t.budget.limit, true)}</div>
             </>
           )}
         </div>
@@ -165,6 +167,7 @@ function Decide() {
           <div className="k">Company capital</div>
           <div className="v">{money(t.budget.capital, true)}</div>
           <div className="s">For engineering, production and entry</div>
+          {t.budget.loan > 0 && <div className="s neg">HQ loan owed: {money(t.budget.loan, true)}</div>}
         </div>
         <div className="rail-block">
           <div className="k">Team status</div>
@@ -260,6 +263,7 @@ function Strategy() {
           ) : (
             <>
               <p className="small muted">{LEARN.goals}</p>
+              <p className="small muted">Every goal counts. A goal left blank scores 0 in Goal accuracy.</p>
               <div className="grid2">
                 {s.targetSegments.length === 0 && <p className="small muted" style={{ gridColumn: "1 / -1" }}>Pick your target segments above to set a share goal for each one.</p>}
                 {s.targetSegments.map((id) => (
@@ -450,6 +454,7 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
               <div>Lead time</div><div>{q.leadTime} round</div>
             </div>
             )}
+            <p className="small muted" style={{ marginBottom: 0 }}>Costs fall over time. See &quot;How costs work&quot; in the scenario briefing (Start here).</p>
             <details style={{ marginTop: 8 }} open={p.briefSent && !locked}>
               <summary className="small">Parts, one by one</summary>
               <div className="kv small">
@@ -520,6 +525,14 @@ function Markets() {
                   </label>
                 )}
               </div>
+              {entered && (
+                <label className="inline small" style={{ marginTop: 6 }}>
+                  <input type="checkbox" checked={!!rd.exit} onChange={(e) => set(`regions.${r.id}.exit`, e.target.checked)} /> Exit this region this round (one-time fee {money(ENTRY_MODES[entered].fee * FINANCE.exitFeeShare)})
+                </label>
+              )}
+              {entered && rd.exit && (
+                <div className="notice warn small">Exiting ends this region&apos;s overhead from this round. Nothing sells here this round, any stock left here is cleared at a discount, partner volume discounts here reset and awareness fades. Coming back later costs the full entry and channel setup fees again.</div>
+              )}
               {!entered && rd.enter && (
                 <>
                   <label>Entry mode</label>
@@ -556,7 +569,7 @@ function Markets() {
                       ))}
                     </tbody>
                   </table>
-                  <p className="small muted">Setup fees are paid once, the first round you open a channel. Dropping a channel and reopening it later costs the fee again.</p>
+                  <p className="small muted">Setup fees are paid once, the first round you open a channel. Dropping a channel is free, but reopening it later costs the fee again and starts over on volume discounts with that partner.</p>
                 </>
               )}
             </div>
@@ -756,6 +769,7 @@ function Review() {
   const committed = new Set(t.committed.map((c) => c.id));
   const devFees = d.products.filter((p) => p.commission && !committed.has(p.id)).reduce((a, p) => a + quote(p, round).devFee, 0);
   const entryFees = REGIONS.filter((r) => d.regions[r.id].enter && !t.regionsEntered[r.id]).reduce((a, r) => a + ENTRY_MODES[d.regions[r.id].entryMode].fee, 0);
+  const exitFees = REGIONS.filter((r) => d.regions[r.id].exit && t.regionsEntered[r.id]).reduce((a, r) => a + ENTRY_MODES[t.regionsEntered[r.id] as keyof typeof ENTRY_MODES].fee * FINANCE.exitFeeShare, 0);
   const expansion = d.capacityExpansion * PRODUCTION.expansionCostPerUnit;
   const roundsLeft = ROUNDS.final - round + 1;
   const pace = round >= 3 && b.promotion + b.research > 0 && (b.available - b.research - b.promotion) < (b.promotion + b.research) * (roundsLeft - 1) * 0.6;
@@ -789,7 +803,12 @@ function Review() {
             <div>Promotion planned</div><div>-{money(b.promotion)}</div>
             <div><b>Left after this round</b></div><div><b style={{ color: b.remaining < 0 ? "var(--bad)" : undefined }}>{money(b.remaining)}</b></div>
           </div>
+          <div className="kv" style={{ marginTop: 6 }}>
+            <div>This round&apos;s spending limit</div><div>{money(b.limit)}</div>
+          </div>
+          <p className="small muted">Promotion and research together can&apos;t go over the greater of $500,000 or 20% of last round&apos;s revenue. Anything you don&apos;t spend carries over.</p>
           {b.remaining < 0 && <div className="notice bad">Promotion is over budget. It will be scaled down to fit at the deadline.</div>}
+          {round >= 1 && b.remaining >= 0 && b.promotion + b.research > b.limit && <div className="notice bad">Promotion and research are over this round&apos;s spending limit. Promotion will be scaled down to fit at the deadline.</div>}
           {pace && <div className="notice warn">Burn-rate warning: at this pace, the marketing budget runs out before the final round.</div>}
           {b.futureReleases > 0 && <p className="small muted">Still to come from head office: {money(b.futureReleases)}.</p>}
         </div>
@@ -799,10 +818,12 @@ function Review() {
             <div>Capital now</div><div>{money(b.capital)}</div>
             <div>Engineering fees (new briefs)</div><div>-{money(devFees)}</div>
             <div>Region entry fees</div><div>-{money(entryFees)}</div>
+            {exitFees > 0 && <><div>Region exit fees</div><div>-{money(exitFees)}</div></>}
             <div>Capacity expansion</div><div>-{money(expansion)}</div>
-            <div><b>Before production and sales</b></div><div><b>{money(b.capital - devFees - entryFees - expansion)}</b></div>
+            <div><b>Before production and sales</b></div><div><b>{money(b.capital - devFees - entryFees - exitFees - expansion)}</b></div>
           </div>
-          <p className="small muted">Production, holding costs, channel setup and overhead also come from capital; sales revenue flows back in.</p>
+          <p className="small muted">Production, holding costs, channel setup and overhead also come from capital; sales revenue flows back in. If capital runs out, Vibe Electronics HQ lends the difference at {Math.round(FINANCE.loanInterestPerRound * 100)}% interest a round, charged to profit.</p>
+          {b.loan > 0 && <div className="notice warn">You owe HQ {money(b.loan)}. It&apos;s repaid automatically from capital above {money(FINANCE.loanRepayCushion)}.</div>}
         </div>
       </div>
       {round >= 1 && <ProFormaPanel />}
@@ -877,6 +898,7 @@ function ProFormaPanel() {
     capital: b.capital,
     marketingAvailable: b.available,
     capacity: b.capacity,
+    loan: b.loan,
     inventory: t.inventory as Parameters<typeof proForma>[0]["inventory"],
   });
   return (
