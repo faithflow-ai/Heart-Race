@@ -127,6 +127,24 @@
   - Claude's recommendation: one in-progress class plus the finished showcase is enough. A third class would add setup without showing anything new.
   - As built: Create showcase class now makes both classes. Products, regions, channels and strategy carry over into Round 2; the weekly inputs (prices, promotion, forecast, production, goals) start at zero or blank. Deleting the finished class also deletes the class in progress.
 
+## Nov 27: Branding and look (proposed, waiting for Victor's pick and go)
+
+Look book with 3 brand directions and mockups: https://claude.ai/artifact/Jfvo5wV3orCMr1xFTKQRAk. Claude recommends A (Pulse: navy, pulse red, mint; heartbeat-line logo; Space Grotesk + Inter), plus "A Vibe Electronics simulation" under the logo and board meetings on the round tracker (from C).
+
+- [P1] App-wide – Round tracker on every screen: Practice to Final, current round, deadline countdown, teammates marked ready
+- [P1] Decisions – Tabs: show each tab's status (done, needs attention, opens in Round X) and a bottom bar with budget left, saved state and a Next button
+- [P1] App-wide – Top menu: 9 links become 6 (Home, Decisions, Results, Research, Creative, More: Learn, How it works, Past decisions, Change log)
+- [P1] App-wide – Color meaning: score bars stop using red; red only for action buttons, amber/red for warnings, green for done
+- [P2] Results – Charts: score, share by segment, revenue and profit by round
+- [P2] Home – "Due this round" checklist in place of the single button
+- [P2] Team – Team color and monogram picked in Practice, used on the leaderboard and charts
+- [P2] Decisions – Money inputs show $ and commas while typing, with running totals
+- [P2] App-wide – Learn boxes stay closed once read
+- [P3] Login and join – Branded pages with the logo and one line of story
+- [P3] Results – Short "round scored" reveal card (rank change, top win, top concern)
+- [P3] Instructor – Class screen and dashboard in the new style
+- [P3] App-wide – Logo files and favicon (also for slides and syllabus)
+
 ## Later batch (queued Nov 23, not in the current build)
 
 - [P2] Instructor – Unusual activity flags: the class screen flags agent-like patterns for each team and says why each one was flagged, with an optional email to the instructor once email sending is set up. Examples: every input entered within seconds, only one teammate ever active, rapid bursts of edits at identical speed, edits at odd hours, no round reflection. Wording must make clear a flag is a prompt to look closer, not proof that a student used an AI agent
