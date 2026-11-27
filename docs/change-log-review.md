@@ -172,6 +172,15 @@ Added Nov 27, second round (Victor's notes; look book items 6 to 8):
 - [P2] Decisions – Team "why we did this" note per step, saved with the round (feeds the board meetings)
 - [P3] App-wide – AI tutor that guides without answering (Capsim has one): later term at the earliest, because of cost and the risk of telling students what to do
 
+Added Nov 27, from the review of Victor's Capsim account (look book item 9):
+
+- [P2] Results – One repeated panel per segment: key stats, what buyers weigh, positioning map, actual vs. potential share; same layout for all 5 segments with Next segment links
+- [P2] Results – Actual vs. potential share chart (share won vs. share the team could have won), for the debrief
+- [P2] Research – Buying-criteria importance shown only in the Customer needs study, rounded to bands, never free and never exact (Learn lessons still give no exact numbers)
+- [P2] Reports – Clickable contents list at the top of long reports; same header on every section (report, round, team)
+- [P2] Decisions – "Last edited by [name], [day time]" on each decision step
+- [P2] App-wide – Design rules: flat charts only (no 3D); map labels never overlap; units always shown ($250K); no raw system names or zero rows for products a team doesn't have; specific button labels (never just "Continue"); one look and one address, no reports in scrolling frames; empty tables explain why and what to do next
+
 ## Later batch (queued Nov 23, not in the current build)
 
 - [P2] Instructor – Unusual activity flags: the class screen flags agent-like patterns for each team and says why each one was flagged, with an optional email to the instructor once email sending is set up. Examples: every input entered within seconds, only one teammate ever active, rapid bursts of edits at identical speed, edits at odd hours, no round reflection. Wording must make clear a flag is a prompt to look closer, not proof that a student used an AI agent
