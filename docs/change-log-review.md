@@ -127,6 +127,62 @@
   - Claude's recommendation: one in-progress class plus the finished showcase is enough. A third class would add setup without showing anything new.
   - As built: Create showcase class now makes both classes. Products, regions, channels and strategy carry over into Round 2; the weekly inputs (prices, promotion, forecast, production, goals) start at zero or blank. Deleting the finished class also deletes the class in progress.
 
+## Nov 27: Branding and look (Victor picked Pulse and said go Nov 27)
+
+**PR 7 (built Nov 27):** Pulse look (colors, fonts, logo, favicon, score bars no longer red), new menu with More, round tracker on every team screen, Start here (replaces How it works; first-login landing; 5 steps with a quick check), Decisions step list with money rail, bottom bar and Last edited by, Home "Due this round" list, Learn boxes stay closed once read. Everything else below is for the next PR.
+
+Look book with 3 brand directions and mockups: https://claude.ai/artifact/Jfvo5wV3orCMr1xFTKQRAk. Claude recommends A (Pulse: navy, pulse red, mint; heartbeat-line logo; Space Grotesk + Inter), plus "A Vibe Electronics simulation" under the logo and board meetings on the round tracker (from C).
+
+- [P1] App-wide – Round tracker on every screen: Practice to Final, current round, deadline countdown, teammates marked ready
+- [P1] Decisions – Tabs: show each tab's status (done, needs attention, opens in Round X) and a bottom bar with budget left, saved state and a Next button
+- [P1] App-wide – Top menu (revised Nov 27 per Victor): Start here, Home, Decisions, Results, Research, Learn, Creative; only Past decisions and Change log under More
+- [P1] App-wide – Color meaning: score bars stop using red; red only for action buttons, amber/red for warnings, green for done
+- [P2] Results – Charts: score, share by segment, revenue and profit by round
+- [P2] Home – "Due this round" checklist in place of the single button
+- [P2] Team – Team color and monogram picked in Practice, used on the leaderboard and charts
+- [P2] Decisions – Money inputs show $ and commas while typing, with running totals
+- [P2] App-wide – Learn boxes stay closed once read
+- [P3] Login and join – Branded pages with the logo and one line of story
+- [P3] Results – Short "round scored" reveal card (rank change, top win, top concern)
+- [P3] Instructor – Class screen and dashboard in the new style
+- [P3] App-wide – Logo files and favicon (also for slides and syllabus)
+
+Added Nov 27 after Victor picked Pulse (look book Part 2):
+
+- [P1] Decisions – Layout: replace the 6 tabs with a left step list (done / needs attention / locked until Round X), a right rail with budget and capital left updating as students type plus last round's value for the same field, and a bottom bar (Saved, who edited last, Next step). Supersedes the P1 tab status item above
+- [P1] App-wide – Round tracker shows board meetings (R4 and Final) with an amber mark
+- [P2] App-wide – Teammates online: initials in the top bar and which screen each teammate is on
+- [P2] App-wide – Glossary: marketing terms get a dotted underline with a hover definition and a link to the Learn lesson
+- [P2] Results – Charts highlight your team in red and rivals in grey
+- [P2] App-wide – Graphic kit: segment icons (also on research, targeting and charts), region outlines, status chips with one meaning per color, team badges (AI rivals grey)
+- [P2] App-wide – Empty states that teach (e.g., no research yet points to where most teams start, without telling them what to do)
+- [P2] Home – Pre-deadline warnings for gaps (e.g., $0 promotion in a target region, production far from forecast)
+- [P3] App-wide – Pulse line used sparingly: loading animation, login divider, round-scored moment
+- [P3] Instructor – Class heatmap of who's ready, team badges on the dashboard
+- [—] Dark mode: not planned (Claude's recommendation)
+
+Added Nov 27, second round (Victor's notes; look book items 6 to 8):
+
+- [P1] Start here – Rename "How it works" to "Start here," first link in the menu, highlighted with a progress count (e.g., 2/5) until finished. On first login students land here instead of Home. Five steps: scenario briefing, meet your team and write the charter, how a round works, how you're scored and graded, a 5-question quick check, then on to Practice. After it's finished it stays as the rules and FAQ reference without the highlight. Optional 2-minute welcome video from Victor at the top
+- [P1] Decisions – Flow: clicking Decisions opens step 1 and Next walks through to Review and ready; any step can be clicked to jump; in later rounds it opens on the first step that needs attention
+- [P1] Strategy and goals – Positioning map exercise (revised Nov 27 per Victor): the team picks 2 axes from the sim's buying criteria (price, battery life, heart and sleep insights, safety alerts, training accuracy, design and comfort, data privacy, durability, health app) with a one-line why; drags its products, target segments and up to 3 rivals to where it believes they sit; adds the positioning statement under the map. Required in Practice (step 1), revisable every round, required again in Round 3 (before the redesign window) and before each board meeting
+- [P1] Results – Positioning reality check: after each round, buyers' actual perceptions are laid over the team's map on the same axes, sharper with the Customer needs study. Shows the gap between intended and perceived position
+- [P1] Grading – Positioning map is not in the sim scorecard (can't be gamed); done/not done on the Review checklist; teams present the map and the gap at the board meetings, scored under the rubric's positioning part
+- [P2] App-wide – Warnings count on the round tracker that opens the list (borrowed from Markstrat)
+- [P2] Home – One summary card per decision step with its key number, to review the whole plan before the deadline (borrowed from Capsim)
+- [P2] Decisions – Projected margin and units shown next to price and promotion inputs as students type (uses the existing pro forma)
+- [P2] Decisions – Team "why we did this" note per step, saved with the round (feeds the board meetings)
+- [P3] App-wide – AI tutor that guides without answering (Capsim has one): later term at the earliest, because of cost and the risk of telling students what to do
+
+Added Nov 27, from the review of Victor's Capsim account (look book item 9):
+
+- [P2] Results – One repeated panel per segment: key stats, what buyers weigh, positioning map, actual vs. potential share; same layout for all 5 segments with Next segment links
+- [P2] Results – Actual vs. potential share chart (share won vs. share the team could have won), for the debrief
+- [P2] Research – Buying-criteria importance shown only in the Customer needs study, rounded to bands, never free and never exact (Learn lessons still give no exact numbers)
+- [P2] Reports – Clickable contents list at the top of long reports; same header on every section (report, round, team)
+- [P2] Decisions – "Last edited by [name], [day time]" on each decision step
+- [P2] App-wide – Design rules: flat charts only (no 3D); map labels never overlap; units always shown ($250K); no raw system names or zero rows for products a team doesn't have; specific button labels (never just "Continue"); one look and one address, no reports in scrolling frames; empty tables explain why and what to do next
+
 ## Later batch (queued Nov 23, not in the current build)
 
 - [P2] Instructor – Unusual activity flags: the class screen flags agent-like patterns for each team and says why each one was flagged, with an optional email to the instructor once email sending is set up. Examples: every input entered within seconds, only one teammate ever active, rapid bursts of edits at identical speed, edits at odd hours, no round reflection. Wording must make clear a flag is a prompt to look closer, not proof that a student used an AI agent
