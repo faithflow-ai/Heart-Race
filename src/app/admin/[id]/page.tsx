@@ -31,7 +31,7 @@ interface Overview {
   rounds: { round: number; processed_at: string; run_count: number }[];
   flagged: { firm: string; title: string; detail: string }[];
   demo: { password: string; students: { name: string; email: string; team: string | null }[] } | null;
-  showcase?: { guestEmail: string; guestPassword: string; built: number } | null;
+  showcase?: { guestEmail: string; guestPassword: string; built: number; stopAfter?: number } | null;
   guest?: boolean;
 }
 
@@ -84,7 +84,7 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
         <div className="stat"><div className="k">Students joined</div><div className="v">{students.reduce((a, f) => a + f.members.length, 0)}</div></div>
       </div>
 
-      {o.guest && <GuestStart firms={students} />}
+      {o.guest && <GuestStart firms={students} finished={o.game.current_round > ROUNDS.final} />}
       {o.showcase && <ShowcasePanel id={id} sc={o.showcase} />}
       {o.demo && <DemoPanel id={id} demo={o.demo} showcase={!!o.showcase} />}
 
@@ -300,7 +300,7 @@ function toLocalInput(iso: string, tz: string) {
 
 function ShowcasePanel({ id, sc }: { id: string; sc: NonNullable<Overview["showcase"]> }) {
   const [busy, setBusy] = useState<string | null>(null);
-  const total = ROUNDS.final + 1;
+  const total = sc.stopAfter ?? ROUNDS.final + 1;
   async function finish() {
     try {
       let done = false;
@@ -499,13 +499,15 @@ function Spark({ values }: { values: (number | null)[] }) {
 }
 
 /** Start here panel for the read-only showcase guest (colleagues reviewing the sim). */
-function GuestStart({ firms }: { firms: Firm[] }) {
+function GuestStart({ firms, finished }: { firms: Firm[]; finished: boolean }) {
   const seg = (id: string) => SEGMENTS.find((x) => x.id === id)?.name ?? id;
   return (
     <div className="panel" style={{ borderLeft: "4px solid var(--accent)" }}>
       <h2 style={{ marginTop: 0 }}>Start here</h2>
       <p className="small" style={{ marginTop: 0 }}>
-        This is a finished class: {firms.length} student teams and 4 computer-run rivals played every round, Practice to Final. You&apos;re a read-only guest, so nothing you click changes anything. Everything on a team&apos;s screens was entered by that team.
+        {finished
+          ? <>This is a finished class: {firms.length} student teams and 4 computer-run rivals played every round, Practice to Final. You&apos;re a read-only guest, so nothing you click changes anything. Everything on a team&apos;s screens was entered by that team.</>
+          : <>This class is in progress: the same {firms.length} teams have played the Practice round and Round 1, and Round 2 is open with this week&apos;s inputs (prices, promotion, forecast, production and goals) blank. In <b>View as student</b> you can type in any field to try it. Nothing is saved and no round will run.</>}
       </p>
       <ol className="small" style={{ paddingLeft: 20 }}>
         <li><b>Class results</b> (below): pick a round to see every firm&apos;s scorecard.</li>

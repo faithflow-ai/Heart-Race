@@ -9,11 +9,11 @@ import bcrypt from "bcryptjs";
 import { aiDecide } from "@/sim/ai";
 import { CREATIVE, ROUNDS, type AiStyle, type MilestoneId, type RegionId, type SegmentId, type StudyId } from "@/sim/config";
 import { normalizeDecision } from "@/sim/product";
-import type { FirmMeta, RoundResult } from "@/sim/types";
+import type { FirmDecision, FirmMeta, RoundResult } from "@/sim/types";
 import { DEMO_EMAIL_DOMAIN, HttpError, type User } from "./auth";
 import { newId, q } from "./db";
 import { CHARTER, STUDENTS, demoPassword, sampleLog, type DemoInfo } from "./demo";
-import { buyStudy, createGame, getFirms, getGame, getResult, processCurrentRound, settingsOf, type GameRow } from "./game";
+import { buyStudy, carryForward, createGame, getFirms, getGame, getResult, processCurrentRound, settingsOf, type GameRow } from "./game";
 
 export interface ShowcaseInfo {
   guestUserId: string;
@@ -21,6 +21,26 @@ export interface ShowcaseInfo {
   guestPassword: string;
   /** Rounds processed so far (0 to 8). */
   built: number;
+  /** Rounds to play before stopping. Missing = the whole game (8). The "class in progress" stops after 2. */
+  stopAfter?: number;
+  /** The "class in progress" created alongside the finished class (deleted with it). */
+  pairId?: string;
+}
+
+/** Weekly inputs a team re-enters each round; cleared in the class in progress so colleagues see them blank. */
+function clearWeeklyInputs(d: FirmDecision): FirmDecision {
+  const n = carryForward(d);
+  for (const regs of Object.values(n.plan))
+    for (const pl of Object.values(regs ?? {})) {
+      if (!pl) continue;
+      pl.price = 0;
+      pl.forecast = 0;
+      pl.production = 0;
+      pl.promotion = 0;
+      pl.media = { digital: 0, search: 0, traditional: 0, trade: 0 };
+    }
+  n.goals = { share: null, segmentShare: {}, revenue: null, margin: null, awareness: null, satisfaction: null };
+  return n;
 }
 
 interface Team {
@@ -154,11 +174,22 @@ export function showcaseInfo(g: GameRow): ShowcaseInfo | null {
   return (settingsOf(g) as unknown as { showcase?: ShowcaseInfo }).showcase ?? null;
 }
 
-/** Step 1: the class, 12 fake students on 4 teams and the read-only guest login. No rounds are played yet. */
-export async function createShowcase(instructor: User): Promise<GameRow> {
-  const existing = await q<{ n: number }>("select count(*)::int as n from games where instructor_id = $1 and settings ? 'showcase'", [instructor.id]);
+/**
+ * Step 1: two classes with the same 4 teams and one read-only guest login. The finished class plays
+ * every round; the class in progress stops after Round 1 so Round 2 is open. No rounds are played yet.
+ */
+export async function createShowcase(instructor: User): Promise<{ game: GameRow; pairId: string }> {
+  const existing = await q<{ n: number }>("select count(*)::int as n from games where instructor_id = $1 and settings ? 'showcase' and settings->'showcase'->>'stopAfter' is null", [instructor.id]);
   if ((existing[0]?.n ?? 0) >= 2) throw new HttpError(400, "You already have 2 showcase classes. Delete one first.");
-  const g = await createGame(instructor, "SHOWCASE: Heart Race full class (Practice to Final)", TEAMS.length);
+  const full = await makeShowcaseClass(instructor, "SHOWCASE: Heart Race full class (Practice to Final)", null);
+  const sc = showcaseInfo(full)!;
+  const mid = await makeShowcaseClass(instructor, "SHOWCASE: class in progress (Round 2 open, try it)", sc, 2);
+  await q("update games set settings = $1 where id = $2", [JSON.stringify({ ...settingsOf(full), showcase: { ...sc, pairId: mid.id } }), full.id]);
+  return { game: (await getGame(full.id))!, pairId: mid.id };
+}
+
+async function makeShowcaseClass(instructor: User, name: string, guest: ShowcaseInfo | null, stopAfter?: number): Promise<GameRow> {
+  const g = await createGame(instructor, name, TEAMS.length);
   const tag = g.code.toLowerCase();
   const password = demoPassword();
   const hash = await bcrypt.hash(password, 10);
@@ -173,13 +204,17 @@ export async function createShowcase(instructor: User): Promise<GameRow> {
     info.userIds.push(id);
     info.students.push({ name, email, team: TEAMS[Math.floor(i / 3)].company });
   }
-  // The guest: a separate read-only instructor login that sees only this class.
-  const guestPassword = demoPassword().replace("demo-", "guest-");
-  const guestEmail = `guest.${tag}@${DEMO_EMAIL_DOMAIN}`;
-  const guestUserId = newId("u_");
-  await q("insert into users (id, email, name, password_hash, role) values ($1,$2,$3,$4,'instructor')", [guestUserId, guestEmail, "Guest (read-only)", await bcrypt.hash(guestPassword, 10)]);
-  info.userIds.push(guestUserId);
-  const showcase: ShowcaseInfo = { guestUserId, guestEmail, guestPassword, built: 0 };
+  // The guest: a separate read-only instructor login that sees only the showcase classes.
+  let showcase: ShowcaseInfo;
+  if (guest) showcase = { guestUserId: guest.guestUserId, guestEmail: guest.guestEmail, guestPassword: guest.guestPassword, built: 0, stopAfter };
+  else {
+    const guestPassword = demoPassword().replace("demo-", "guest-");
+    const guestEmail = `guest.${tag}@${DEMO_EMAIL_DOMAIN}`;
+    const guestUserId = newId("u_");
+    await q("insert into users (id, email, name, password_hash, role) values ($1,$2,$3,$4,'instructor')", [guestUserId, guestEmail, "Guest (read-only)", await bcrypt.hash(guestPassword, 10)]);
+    info.userIds.push(guestUserId);
+    showcase = { guestUserId, guestEmail, guestPassword, built: 0 };
+  }
   await q("update games set settings = $1 where id = $2", [JSON.stringify({ ...settingsOf(g), demo: info, showcase }), g.id]);
   return (await getGame(g.id))!;
 }
@@ -203,9 +238,9 @@ export async function showcaseStep(instructor: User, gameId: string): Promise<{ 
   if (!g0 || g0.instructor_id !== instructor.id) throw new HttpError(404, "Class not found.");
   const sc = showcaseInfo(g0);
   if (!sc) throw new HttpError(400, "This isn't a showcase class.");
-  const total = ROUNDS.final + 1;
+  const total = sc.stopAfter ?? ROUNDS.final + 1;
   const round = g0.current_round;
-  if (round > ROUNDS.final) return { built: total, done: true, total };
+  if (round >= total) return { built: total, done: true, total };
   const firms = (await getFirms(g0.id)).filter((f) => !f.is_ai);
   const members = await q<{ firm_id: string; id: string; email: string; name: string }>("select m.firm_id, u.id, u.email, u.name from members m join users u on u.id = m.user_id where m.game_id = $1 order by u.name", [g0.id]);
   const allFirms = await getFirms(g0.id);
@@ -276,6 +311,17 @@ export async function showcaseStep(instructor: User, gameId: string): Promise<{ 
       await q("update creative_submissions set scores = $1, feedback = $2, graded_at = now() where firm_id = $3 and milestone = $4", [JSON.stringify(gr.scores), gr.feedback, firms[t].id, m.id]);
     }
   const built = round + 1;
+  // Class in progress: open the next round with the weekly inputs blank.
+  if (sc.stopAfter && built >= sc.stopAfter) {
+    const last = await q<{ firm_id: string; data: unknown }>("select firm_id, data from decisions where round = $1 and firm_id = any($2)", [round, firms.map((f) => f.id)]);
+    for (const r of last) {
+      const d = clearWeeklyInputs(normalizeDecision(typeof r.data === "string" ? JSON.parse(r.data) : (r.data as FirmDecision)));
+      await q(
+        "insert into decisions (firm_id, round, data) values ($1,$2,$3) on conflict (firm_id, round) do update set data = excluded.data, updated_at = now()",
+        [r.firm_id, built, JSON.stringify(d)],
+      );
+    }
+  }
   const g1 = (await getGame(g0.id))!;
   await q("update games set status = 'setup', deadline = null, settings = $1 where id = $2", [JSON.stringify({ ...settingsOf(g1), showcase: { ...sc, built } }), g0.id]);
   return { built, total, done: built >= total };

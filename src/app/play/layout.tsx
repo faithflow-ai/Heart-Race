@@ -23,10 +23,17 @@ function Shell({ children }: { children: React.ReactNode }) {
           { href: "/play/help", label: "How it works" },
         ]}
       />
+      {team?.tryIt && (
+        <div className="viewas" style={{ background: "#e8f5e9", color: "#1b5e20", borderColor: "#b7dfb9" }}>
+          <span><b>Try-it mode:</b> type in any field and click through the screens to see what students do. Nothing is saved, no round will run, and your entries clear when you reload the page.</span>
+        </div>
+      )}
       {team?.viewAs && (
         <div className="viewas">
           <span>
-            <b>{team.guest ? `You're viewing ${team.firm.name} as a guest.` : `View as student: ${team.firm.name}.`}</b> Everything on these screens was entered by this team&apos;s students. Read-only: nothing you do here changes anything.
+            <b>{team.guest ? `You're viewing ${team.firm.name} as a guest.` : `View as student: ${team.firm.name}.`}</b> {team.tryIt
+              ? "The Practice round and Round 1 were entered by this team's students. Round 2 is open for you to try."
+              : "Everything on these screens was entered by this team's students. Read-only: nothing you do here changes anything."}
           </span>
           <button
             onClick={async () => {

@@ -94,7 +94,7 @@ export function AboutScreen({ team }: { team: TeamData }) {
     <details className="about-screen" open>
       <summary>About this screen</summary>
       <p><b>What students decide here:</b> {what}</p>
-      {sum && <p><b>What {team.firm.name} chose ({round}):</b> {sum}</p>}
+      {sum && <p><b>{team.tryIt ? `Entered so far (${round}):` : `What ${team.firm.name} chose (${round}):`}</b> {sum}</p>}
     </details>
   );
 }

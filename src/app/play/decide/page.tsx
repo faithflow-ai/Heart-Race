@@ -122,7 +122,7 @@ function Decide() {
           <Learn id={current.id} />
         </div>
       ) : (
-        <fieldset className="plain" disabled={t.viewAs || over}>
+        <fieldset className="plain" disabled={(t.viewAs && !t.tryIt) || over}>
           {current.id === "strategy" && <Strategy />}
           {current.id === "products" && <Products />}
           {current.id === "markets" && <Markets />}

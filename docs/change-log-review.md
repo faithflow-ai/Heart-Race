@@ -119,12 +119,13 @@
   - Decided (Victor, Nov 27): each segment goal is weighted equally, not by segment size.
   - The Market score itself doesn't change (it's already share across target segments, weighted by size); Results would also show share by segment next to the goals.
 
-## Queued Nov 27: "class in progress" for colleagues (not built, wait for go)
+## Nov 27: "class in progress" for colleagues (Victor said go Nov 27; built in PR 6, waiting for merge)
 
 - [P1] Showcase – Second guest class, "in progress": the same 4 teams, with the Practice round and Round 1 already played and Round 2 open. Round 2's inputs start blank (no carry-forward fill), so colleagues see exactly what students face each week. Uses the same guest login as the finished showcase, so colleagues see both classes after signing in.
   - **Try-it mode:** the guest can type in every field and click through the screens (send a brief, accept a quote, enter prices and promotion) to feel the workload. Nothing is saved or processed: a banner says "Practice mode: you can type here to try it, but nothing is saved and no round will run," and the entries clear when the page reloads.
   - Round 1 results, research and the change log are there to read, so colleagues can see what students have to work from.
   - Claude's recommendation: one in-progress class plus the finished showcase is enough. A third class would add setup without showing anything new.
+  - As built: Create showcase class now makes both classes. Products, regions, channels and strategy carry over into Round 2; the weekly inputs (prices, promotion, forecast, production, goals) start at zero or blank. Deleting the finished class also deletes the class in progress.
 
 ## Later batch (queued Nov 23, not in the current build)
 
