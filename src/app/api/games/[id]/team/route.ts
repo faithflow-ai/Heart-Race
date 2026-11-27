@@ -3,6 +3,8 @@ import { getDecision, getFirms, getResult, proFormaFor, settingsOf } from "@/lib
 import { normalizeDecision } from "@/sim/product";
 import { instructorGame } from "@/lib/access";
 import { handle } from "@/lib/http";
+import { eventResponses, eventSchedule } from "@/sim/events";
+import type { RoundResult } from "@/sim/types";
 
 /** Instructor view of one firm: its decisions for a round and, if processed, its reports. */
 export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -11,6 +13,18 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
   const sp = new URL(req.url).searchParams;
   const firm = (await getFirms(g.id)).find((f) => f.id === sp.get("firmId"));
   if (!firm) throw new HttpError(404, "Firm not found.");
+  // Event response card: what this team changed in each event round (compared with the round before).
+  if (sp.get("events")) {
+    const sched = eventSchedule(settingsOf(g));
+    const need = new Set<number>();
+    for (const r of Object.values(sched)) if (r !== null && r < g.current_round) (need.add(r), need.add(r - 1));
+    const results: Record<number, RoundResult> = {};
+    for (const r of need) {
+      const res = await getResult(g.id, r);
+      if (res) results[r] = res;
+    }
+    return { firm, schedule: sched, events: eventResponses(firm.id, results, settingsOf(g)) };
+  }
   const round = Number(sp.get("round") ?? g.current_round);
   const res = round < g.current_round ? await getResult(g.id, round) : null;
   const decision = res ? res.decisions[firm.id] : firm.is_ai ? null : (await getDecision(firm.id, round)).data;

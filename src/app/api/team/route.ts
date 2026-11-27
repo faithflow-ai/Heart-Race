@@ -1,6 +1,8 @@
 import { isGuest, requireUser } from "@/lib/auth";
 import { one, q } from "@/lib/db";
-import { budgetEstimate, getDecision, getFirms, latestResult, processedRounds, settingsOf } from "@/lib/game";
+import { budgetEstimate, firmMeta, getDecision, getFirms, latestResult, processedRounds, settingsOf } from "@/lib/game";
+import { eventUnitCost, eventsForRound, newsFor } from "@/sim/events";
+import { unitCostAt } from "@/sim/product";
 import { studentContext } from "@/lib/access";
 import { handle } from "@/lib/http";
 import { stepOfPath } from "@/lib/steps";
@@ -27,6 +29,10 @@ export const GET = handle(async () => {
   }
   // Start here progress (students only; instructors and guests viewing a team skip it).
   const ob = viewAs ? null : await one<{ onboarding: Record<string, boolean> }>("select onboarding from members where user_id = $1 and firm_id = $2", [user.id, firm.id]);
+  // Market events: this round's news, and unit costs including any event costs.
+  const metas = firms.map((f) => firmMeta(f, round));
+  const ev = eventsForRound(round, game.seed, metas, latest, latest?.state ?? null, settingsOf(game));
+  const news = newsFor(round, game.seed, metas, latest, settingsOf(game));
   const reports = await q<{ round: number; study: string }>("select round, study from research_reports where firm_id = $1 order by round, study", [firm.id]);
   return {
     user,
@@ -42,7 +48,14 @@ export const GET = handle(async () => {
     updatedAt: updated_at,
     budget: budgetEstimate(game, latest, firm.id, data),
     // Accepted products (components locked) and what they cost now.
-    committed: fs ? Object.values(fs.products).map((p) => ({ id: p.spec.id, launchRound: p.launchRound, retired: p.retired, unitCost: p.quotedUnitCost })) : [],
+    committed: fs
+      ? Object.values(fs.products).map((p) => {
+          const base = unitCostAt(p.quotedUnitCost, p.cumUnits, Math.max(1, round), p.briefedRound);
+          const now = eventUnitCost(base, p.quotedUnitCost, p.spec, round >= 1 ? ev : null);
+          return { id: p.spec.id, launchRound: p.launchRound, retired: p.retired, unitCost: Math.round(now * 100) / 100, eventCost: Math.round((now - base) * 100) / 100 };
+        })
+      : [],
+    news,
     regionsEntered: fs ? fs.regions : {},
     channelsOpen: fs ? fs.channelsOpen : {},
     inventory: fs ? Object.fromEntries(Object.entries(fs.inventory).map(([pid, regs]) => [pid, Object.fromEntries(Object.entries(regs).map(([r, lots]) => [r, (lots ?? []).reduce((a, l) => a + l.units, 0)]))])) : {},

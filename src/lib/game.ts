@@ -45,6 +45,7 @@ export function settingsOf(g: GameRow): GameSettings {
     ...s,
     scorecardWeights: { ...DEFAULT_SETTINGS.scorecardWeights, ...(s.scorecardWeights ?? {}) },
     marketingBudget: { ...DEFAULT_SETTINGS.marketingBudget, ...(s.marketingBudget ?? {}) },
+    events: { ...(s.events ?? {}) },
   };
 }
 

@@ -169,6 +169,8 @@ export interface FirmState {
 export interface GameState {
   round: number;
   firms: Record<string, FirmState>;
+  /** Market event details fixed when they first happen (missing in older states). */
+  events?: { rival?: import("./events").RivalVariant; chipStart?: number; chipAlloc?: Record<string, number> };
 }
 
 /** One row of the share model: a product in a segment in a region. */

@@ -18,7 +18,7 @@ export function runRound(opts: {
   const decisions: Record<string, FirmDecision | null> = { ...opts.studentDecisions };
   for (const f of opts.firms) {
     if (!f.isAi) continue;
-    decisions[f.id] = aiDecide(f, { round: opts.round, seed: opts.seed, state: opts.prevResult?.state ?? null, prevResult: opts.prevResult, firms: opts.firms });
+    decisions[f.id] = aiDecide(f, { round: opts.round, seed: opts.seed, state: opts.prevResult?.state ?? null, prevResult: opts.prevResult, firms: opts.firms, settings: opts.settings });
   }
   return processRound({
     round: opts.round,
