@@ -18,7 +18,7 @@ Last updated Nov 27, 2026. This is the single place that records how the simulat
 | Unspent marketing money | Carries over. Not counted as profit | Students: Start here | Now |
 | Briefing wording | Say "$2M to start, then you earn more by selling." Firms typically spend $7M to $11M on marketing over the game | Students: briefing | Queued |
 | Per-round marketing cap | Promotion plus research in a round can't go over the greater of $500K or 20% of last round's revenue. Shown as "This round's spending limit" | Students: on screen | Queued (numbers proposed) |
-| Running out of capital | Today production isn't checked against cash, so capital can go below zero. Proposed: HQ advances an emergency loan at about 3% interest per round, with a warning | Students: on screen | Proposed |
+| Running out of capital | Today production isn't checked against cash, so capital can go below zero. Approved: HQ advances an emergency loan at about 3% interest per round, with a warning | Students: on screen | Queued |
 | Burn-rate warning | Shown from Round 3 if the marketing pot will run out before the Final round at the current pace | Students: on screen | Now |
 | Overhead | $150K per round, plus $40K per region entered | Students: Start here | Now |
 
@@ -84,12 +84,12 @@ Last updated Nov 27, 2026. This is the single place that records how the simulat
 | Customer | 20% | 40% product fit to target segments, 30% awareness in targets, 30% satisfaction, compared with the best firm | Now |
 | Financial | 20% | 70% operating profit, 30% return on promotion, each scaled so the worst firm gets 0 and the best 100 | Now |
 | Financial (queued) | | Profit before one-time costs (development, entry, channel setup). Expansion amortized over 4 rounds. Return on promotion changed so cutting promotion can't game it | Queued |
-| Channel | 20% | Coverage of target buyers in target regions, reduced when the average partner margin is above 15% | Now (see Proposed below) |
+| Channel | 20% | Coverage of target buyers in target regions, reduced when the average partner margin is above 15% | Now (see Queued below) |
 | Goals and forecast | 10% | Half forecast accuracy, half closeness to the team's own goals (share by target segment, revenue, margin, awareness, satisfaction) | Now |
 | Goals (queued) | | A blank goal scores zero | Queued |
 
-- **Proposed: channel score fairness.** The margin penalty hurts teams that rightly use high-margin partners. Older Adults buy 45% of their wearables in pharmacies, which take 40%, so a team serving them through their usual channels scores about 15% lower on channel than a team selling online (up to 25% if it sells only through pharmacies). Proposed: compare margins with what's normal for the team's target segments, or drop the margin penalty.
-- **Proposed: financial score scaling.** Worst-to-best scaling gives the lowest firm 0 even when it's profitable, and one runaway firm squashes everyone else. Proposed: compare with the best firm, like the other parts.
+- **Queued: channel score fairness.** The margin penalty hurts teams that rightly use high-margin partners. Older Adults buy 45% of their wearables in pharmacies, which take 40%, so a team serving them through their usual channels scores about 15% lower on channel than a team selling online (up to 25% if it sells only through pharmacies). Approved: compare margins with what's normal for the team's target segments.
+- **Queued: financial score scaling.** Worst-to-best scaling gives the lowest firm 0 even when it's profitable, and one runaway firm squashes everyone else. Approved: compare with the best firm, like the other parts.
 - Targets can change each round. Products still sell in dropped segments and count toward profit, but stop counting toward share. Victor decided this is fine (Nov 27).
 - **Grade.** Round weights: practice 0, Rounds 1 and 2 at 10% each, Rounds 3 to 6 at 15% each, Final 20%. The export shows each team's weighted score as a percent of the best student team's, then bands A 90+, B 80+, C 70+, D 60+. AI firms are ranked but never take a band.
 
