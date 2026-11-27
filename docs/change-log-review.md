@@ -131,6 +131,8 @@
 
 **PR 7 (built Nov 27):** Pulse look (colors, fonts, logo, favicon, score bars no longer red), new menu with More, round tracker on every team screen, Start here (replaces How it works; first-login landing; 5 steps with a quick check), Decisions step list with money rail, bottom bar and Last edited by, Home "Due this round" list, Learn boxes stay closed once read. Everything else below is for the next PR.
 
+**PR 8 (built Nov 27):** positioning map exercise on step 1 (2 axes, drag dots, confirm; required in Practice, R3, R4, Final; not scored), Results summary card, contents bar, segment-by-segment panels with actual vs. potential share, reality check map, round-by-round charts, team colors and monograms, glossary hover terms, comma number fields. Still later: unusual activity flags, instructor heatmap, branded login and join pages, round-scored reveal, empty-state pass, pre-deadline warnings.
+
 Look book with 3 brand directions and mockups: https://claude.ai/artifact/Jfvo5wV3orCMr1xFTKQRAk. Claude recommends A (Pulse: navy, pulse red, mint; heartbeat-line logo; Space Grotesk + Inter), plus "A Vibe Electronics simulation" under the logo and board meetings on the round tracker (from C).
 
 - [P1] App-wide – Round tracker on every screen: Practice to Final, current round, deadline countdown, teammates marked ready

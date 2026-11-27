@@ -31,7 +31,7 @@ export function PromoResults({ promo, names, targets }: { promo: PromoResult[]; 
   const order = [...targets, ...SEGMENTS.map((s) => s.id).filter((s) => !targets.includes(s))];
   return (
     <div className="panel">
-      <h2 style={{ marginTop: 0 }}>Promotion results: what your spending bought</h2>
+      <h2 style={{ marginTop: 0 }} id="promotion">Promotion results: what your spending bought</h2>
       <p className="small muted" style={{ marginTop: 0 }}>
         Consumer ads (pull) build awareness, shown in points (1 point = 1% of a segment&apos;s buyers). Cost per point divides what you spent in that medium by the points it added in that one segment, so a medium that reaches a segment well shows a low cost. Trade promotion (push) works through partners: it adds in-store push (buyers in that store meet your brand at the shelf) and wider stocking, but only this round. ★ = your target segments.
       </p>
@@ -120,7 +120,7 @@ export function ProjectedVsActual({ pf, pnl }: { pf: ProForma; pnl: PnL }) {
   };
   return (
     <div className="panel">
-      <h2 style={{ marginTop: 0 }}>Projected vs. actual profit and loss</h2>
+      <h2 style={{ marginTop: 0 }} id="projected">Projected vs. actual profit and loss</h2>
       <p className="small muted" style={{ marginTop: 0 }}>Projected = the pro forma built from your own forecast and decisions before the deadline. Actual revenue also includes app subscriptions and clearance sales.</p>
       <table>
         <thead><tr><th></th><th className="num">Projected</th><th className="num">Actual</th><th className="num">Difference</th></tr></thead>
