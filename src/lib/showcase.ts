@@ -232,6 +232,38 @@ function reflection(t: Team, round: number, prev: RoundResult | null, firmId: st
   return parts.join(" ");
 }
 
+/**
+ * Rebuild: wipe the rounds of both showcase classes (the finished class and its class in progress) and
+ * start them over at the Practice round, keeping the classes, teams, fake students and the guest login.
+ * The page then replays them with showcaseStep, so they follow the simulation's current rules.
+ */
+export async function resetShowcase(instructor: User, gameId: string): Promise<{ ids: string[] }> {
+  const g = await getGame(gameId);
+  if (!g || g.instructor_id !== instructor.id) throw new HttpError(404, "Class not found.");
+  const sc = showcaseInfo(g);
+  if (!sc) throw new HttpError(400, "This isn't a showcase class.");
+  let full = g;
+  if (sc.stopAfter) {
+    const owner = await q<{ id: string }>("select id from games where instructor_id = $1 and settings->'showcase'->>'pairId' = $2", [instructor.id, g.id]);
+    if (owner[0]) full = (await getGame(owner[0].id))!;
+  }
+  const pairId = showcaseInfo(full)?.pairId;
+  const ids = [full.id, ...(pairId && pairId !== full.id ? [pairId] : [])];
+  for (const id of ids) {
+    const fids = (await getFirms(id)).map((f) => f.id);
+    await q("delete from results where game_id = $1", [id]);
+    for (const table of ["decisions", "change_log", "research_reports", "creative_submissions"])
+      await q(`delete from ${table} where firm_id = any($1)`, [fids]);
+    const gi = (await getGame(id))!;
+    const si = showcaseInfo(gi)!;
+    await q("update games set current_round = 0, status = 'setup', deadline = null, processing_at = null, settings = $1 where id = $2", [
+      JSON.stringify({ ...settingsOf(gi), showcase: { ...si, built: 0 } }),
+      id,
+    ]);
+  }
+  return { ids };
+}
+
 /** Step 2 (repeat): play the open round for the showcase teams and process it. Returns progress. */
 export async function showcaseStep(instructor: User, gameId: string): Promise<{ built: number; total: number; done: boolean }> {
   const g0 = await getGame(gameId);
