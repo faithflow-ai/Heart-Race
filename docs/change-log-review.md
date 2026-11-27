@@ -119,6 +119,13 @@
   - Decided (Victor, Nov 27): each segment goal is weighted equally, not by segment size.
   - The Market score itself doesn't change (it's already share across target segments, weighted by size); Results would also show share by segment next to the goals.
 
+## Queued Nov 27: "class in progress" for colleagues (not built, wait for go)
+
+- [P1] Showcase – Second guest class, "in progress": the same 4 teams, with the Practice round and Round 1 already played and Round 2 open. Round 2's inputs start blank (no carry-forward fill), so colleagues see exactly what students face each week. Uses the same guest login as the finished showcase, so colleagues see both classes after signing in.
+  - **Try-it mode:** the guest can type in every field and click through the screens (send a brief, accept a quote, enter prices and promotion) to feel the workload. Nothing is saved or processed: a banner says "Practice mode: you can type here to try it, but nothing is saved and no round will run," and the entries clear when the page reloads.
+  - Round 1 results, research and the change log are there to read, so colleagues can see what students have to work from.
+  - Claude's recommendation: one in-progress class plus the finished showcase is enough. A third class would add setup without showing anything new.
+
 ## Later batch (queued Nov 23, not in the current build)
 
 - [P2] Instructor – Unusual activity flags: the class screen flags agent-like patterns for each team and says why each one was flagged, with an optional email to the instructor once email sending is set up. Examples: every input entered within seconds, only one teammate ever active, rapid bursts of edits at identical speed, edits at odd hours, no round reflection. Wording must make clear a flag is a prompt to look closer, not proof that a student used an AI agent
