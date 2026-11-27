@@ -133,7 +133,7 @@ Look book with 3 brand directions and mockups: https://claude.ai/artifact/Jfvo5w
 
 - [P1] App-wide – Round tracker on every screen: Practice to Final, current round, deadline countdown, teammates marked ready
 - [P1] Decisions – Tabs: show each tab's status (done, needs attention, opens in Round X) and a bottom bar with budget left, saved state and a Next button
-- [P1] App-wide – Top menu: 9 links become 6 (Home, Decisions, Results, Research, Creative, More: Learn, How it works, Past decisions, Change log)
+- [P1] App-wide – Top menu (revised Nov 27 per Victor): Start here, Home, Decisions, Results, Research, Learn, Creative; only Past decisions and Change log under More
 - [P1] App-wide – Color meaning: score bars stop using red; red only for action buttons, amber/red for warnings, green for done
 - [P2] Results – Charts: score, share by segment, revenue and profit by round
 - [P2] Home – "Due this round" checklist in place of the single button
@@ -158,6 +158,17 @@ Added Nov 27 after Victor picked Pulse (look book Part 2):
 - [P3] App-wide – Pulse line used sparingly: loading animation, login divider, round-scored moment
 - [P3] Instructor – Class heatmap of who's ready, team badges on the dashboard
 - [—] Dark mode: not planned (Claude's recommendation)
+
+Added Nov 27, second round (Victor's notes; look book items 6 to 8):
+
+- [P1] Start here – Rename "How it works" to "Start here," first link in the menu, highlighted with a progress count (e.g., 2/5) until finished. On first login students land here instead of Home. Five steps: scenario briefing, meet your team and write the charter, how a round works, how you're scored and graded, a 5-question quick check, then on to Practice. After it's finished it stays as the rules and FAQ reference without the highlight. Optional 2-minute welcome video from Victor at the top
+- [P1] Decisions – Flow: clicking Decisions opens step 1 and Next walks through to Review and ready; any step can be clicked to jump; in later rounds it opens on the first step that needs attention
+- [P2] Strategy and Products – Positioning map: segment ideal points, your products (red) and rivals (grey), sharper with research bought. Shows the market, not the answer
+- [P2] App-wide – Warnings count on the round tracker that opens the list (borrowed from Markstrat)
+- [P2] Home – One summary card per decision step with its key number, to review the whole plan before the deadline (borrowed from Capsim)
+- [P2] Decisions – Projected margin and units shown next to price and promotion inputs as students type (uses the existing pro forma)
+- [P2] Decisions – Team "why we did this" note per step, saved with the round (feeds the board meetings)
+- [P3] App-wide – AI tutor that guides without answering (Capsim has one): later term at the earliest, because of cost and the risk of telling students what to do
 
 ## Later batch (queued Nov 23, not in the current build)
 
