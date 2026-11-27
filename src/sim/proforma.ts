@@ -23,6 +23,8 @@ export interface ProFormaInput {
   capital: number;
   marketingAvailable: number;
   capacity: number;
+  /** HQ emergency loan outstanding (interest is charged this round). */
+  loan?: number;
   inventory?: Record<string, Partial<Record<RegionId, number>>>;
 }
 
@@ -45,7 +47,7 @@ export function proForma(x: ProFormaInput): ProForma {
   let holding = 0;
   let units = 0;
   let promotion = 0;
-  const regionsActive = regionIds.filter((r) => x.regionsEntered[r] || d.regions[r]?.enter);
+  const regionsActive = regionIds.filter((r) => (x.regionsEntered[r] && !d.regions[r]?.exit) || (!x.regionsEntered[r] && d.regions[r]?.enter));
   for (const pid of x.sellable) {
     const uc = x.unitCost[pid] ?? 0;
     for (const r of regionsActive) {
@@ -78,15 +80,21 @@ export function proForma(x: ProFormaInput): ProForma {
   if (round >= 1)
     for (const r of regionIds) {
       const rd = d.regions[r];
-      if (rd?.enter && !x.regionsEntered[r]) entryFees += ENTRY_MODES[rd.entryMode].fee;
-      if (rd?.enter || x.regionsEntered[r]) for (const ch of rd?.channels ?? []) if (!(x.channelsOpen?.[r] ?? []).includes(ch)) channelSetup += CHANNEL_TERMS[ch].setupFee;
+      const had = x.regionsEntered[r];
+      if (rd?.exit && had) {
+        entryFees += ENTRY_MODES[had].fee * FINANCE.exitFeeShare;
+        continue;
+      }
+      if (rd?.enter && !had) entryFees += ENTRY_MODES[rd.entryMode].fee;
+      if (rd?.enter || had) for (const ch of rd?.channels ?? []) if (!(x.channelsOpen?.[r] ?? []).includes(ch)) channelSetup += CHANNEL_TERMS[ch].setupFee;
     }
   const expansion = round >= 1 ? d.capacityExpansion * PRODUCTION.expansionCostPerUnit : 0;
   const overhead = round >= 1 ? FINANCE.overheadPerRound + FINANCE.overheadPerRegion * regionsActive.length : 0;
   const capacityFixed = round >= 1 ? x.capacity * PRODUCTION.fixedCostPerCapacityUnit : 0;
+  const interest = round >= 1 ? (x.loan ?? 0) * FINANCE.loanInterestPerRound : 0;
   const revenue = gross - partner - fulfillment;
-  const operatingProfit = revenue - cogs - holding - capacityFixed - overhead - promotion - research - devFees - entryFees - channelSetup - expansion;
-  const capitalEnd = x.capital - devFees - entryFees - channelSetup - expansion + revenue - cogs - holding - capacityFixed - overhead;
+  const operatingProfit = revenue - cogs - holding - capacityFixed - overhead - interest - promotion - research - devFees - entryFees - channelSetup - expansion;
+  const capitalEnd = x.capital - devFees - entryFees - channelSetup - expansion + revenue - cogs - holding - capacityFixed - overhead - interest;
   const r0 = (n: number) => Math.round(n);
   return {
     lines: [
@@ -98,9 +106,9 @@ export function proForma(x: ProFormaInput): ProForma {
       { key: "promotion", label: "Promotion", value: -r0(promotion) },
       { key: "research", label: "Research", value: -r0(research) },
       { key: "devFees", label: "Engineering development fees", value: -r0(devFees) },
-      { key: "entry", label: "Region entry and channel setup", value: -r0(entryFees + channelSetup) },
+      { key: "entry", label: "Region entry, exit and channel setup", value: -r0(entryFees + channelSetup) },
       { key: "expansion", label: "Capacity expansion", value: -r0(expansion) },
-      { key: "fixed", label: "Overhead and factory fixed cost", value: -r0(overhead + capacityFixed) },
+      { key: "fixed", label: interest > 0 ? "Overhead, factory fixed cost and loan interest" : "Overhead and factory fixed cost", value: -r0(overhead + capacityFixed + interest) },
       { key: "operatingProfit", label: "Projected operating profit", value: r0(operatingProfit) },
     ],
     revenue: r0(revenue),

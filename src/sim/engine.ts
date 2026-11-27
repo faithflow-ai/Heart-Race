@@ -11,6 +11,7 @@ import {
   LEVERAGE,
   PRODUCTION,
   PRODUCT_RULES,
+  REGIONS,
   ROUNDS,
   SEGMENTS,
   STUDIES,
@@ -93,6 +94,26 @@ export function priceFactor(seg: SegmentId, region: RegionId, price: number): nu
   return Math.max(0.01, f * (rel >= 0 ? taper : 1));
 }
 
+const regionName = (r: RegionId) => REGIONS.find((x) => x.id === r)?.name ?? r;
+
+/** Most a firm may spend on promotion + research this round: the greater of a floor or a share of last round's revenue. */
+export function spendingLimit(fs: Pick<FirmState, "lastRevenue">, settings: GameSettings = DEFAULT_SETTINGS): number {
+  const mb = settings.marketingBudget;
+  return Math.max(mb.roundCapFloor, mb.roundCapRevenueShare * (fs.lastRevenue ?? 0));
+}
+
+/**
+ * Partner stocking with trade support. Partners carry less of a brand that gives them nothing:
+ * without trade promotion a partner stocks (1 - dependence) of its usual reach; trade money wins back the rest.
+ * Dependence scales with how strongly that partner type responds to trade (the own website doesn't depend on it).
+ */
+export function stockingFactor(ch: ChannelId, tradeSpend: number): number {
+  if (CHANNEL_TERMS[ch].margin <= 0) return 1;
+  const dep = TRADE_PROMO.stockDependence * Math.min(1, CHANNEL_PUSH[ch] ?? 0);
+  const t = tradeSpend > 0 ? tradeSpend / (tradeSpend + TRADE_PROMO.stockHalfSpend) : 0;
+  return 1 - dep + dep * t;
+}
+
 export function marginCut(units: number): number {
   let tiers = 0;
   for (const t of LEVERAGE.tiers) if (units >= t) tiers++;
@@ -138,7 +159,7 @@ export function availability(
     const share = mix[ch] ?? 0;
     const p = channelPush(ch, tradeSpend);
     push[ch] = p;
-    const a = share * Math.min(1, CHANNEL_TERMS[ch].coverage * ENTRY_MODES[mode].coverageBoost * (1 + TRADE_PROMO.stockLift * p));
+    const a = share * Math.min(1, CHANNEL_TERMS[ch].coverage * ENTRY_MODES[mode].coverageBoost * stockingFactor(ch, tradeSpend));
     byChannel[ch] = a;
     total += a;
   }
@@ -171,8 +192,12 @@ function emptyPnl(): PnL {
     entryFees: 0,
     channelSetup: 0,
     expansion: 0,
+    exitFees: 0,
+    interest: 0,
     overhead: 0,
     operatingProfit: 0,
+    scoredProfit: 0,
+    expansionAmortized: 0,
   };
 }
 
@@ -219,6 +244,12 @@ export function processRound(input: ProcessInput): RoundResult {
     fs.capacity += fs.pendingCapacity;
     fs.pendingCapacity = 0;
 
+    // Interest on HQ's emergency loan (charged to profit, paid from capital).
+    if (round >= 1 && (fs.loan ?? 0) > 0) {
+      pnl.interest = (fs.loan ?? 0) * FINANCE.loanInterestPerRound;
+      fs.capital -= pnl.interest;
+    }
+
     // Marketing budget.
     const potStart = fs.marketingPot;
     const release = round >= 1 ? settings.marketingBudget.releases[round] ?? 0 : 0;
@@ -240,15 +271,23 @@ export function processRound(input: ProcessInput): RoundResult {
       if ("practiceOnly" in st && st.practiceOnly && round !== 0) continue;
       research += st.cost;
     }
-    research = Math.min(research, fs.marketingPot);
+    // Per-round spending limit on promotion + research (the greater of a floor or a share of last round's revenue).
+    const spendLimit = round >= 1 ? spendingLimit(fs, settings) : Infinity;
+    research = Math.min(research, fs.marketingPot, spendLimit);
     fs.marketingPot -= research;
     pnl.research = research;
 
     // Promotion (charged to the marketing pot; scaled down if over budget).
     let promoAsked = 0;
     for (const pid of Object.keys(d.plan)) for (const r of regionIds) promoAsked += cellPromo(d.plan[pid]?.[r]);
-    const promoScale = promoAsked > fs.marketingPot ? fs.marketingPot / promoAsked : 1;
-    if (promoScale < 1 && promoAsked > 0) notes.push(`Promotion was cut to ${Math.round(promoScale * 100)}% because it exceeded the marketing budget.`);
+    const promoRoom = Math.max(0, Math.min(fs.marketingPot, spendLimit - research));
+    const promoScale = promoAsked > promoRoom ? promoRoom / promoAsked : 1;
+    if (promoScale < 1 && promoAsked > 0)
+      notes.push(
+        promoRoom < fs.marketingPot
+          ? `Promotion was cut to ${Math.round(promoScale * 100)}% because promotion and research together can't go over this round's spending limit of $${Math.round(spendLimit).toLocaleString()}.`
+          : `Promotion was cut to ${Math.round(promoScale * 100)}% because it exceeded the marketing budget.`,
+      );
     (d as FirmDecision & { _promoScale?: number })._promoScale = round >= 1 ? promoScale : 0;
     if (round >= 1) {
       pnl.promotion = promoAsked * promoScale;
@@ -259,6 +298,33 @@ export function processRound(input: ProcessInput): RoundResult {
     if (round >= 1) {
       for (const r of regionIds) {
         const rd = d.regions[r];
+        // Exit: one-time fee, ends overhead, clears stock there at a discount, resets partner volume discounts.
+        if (rd.exit && fs.regions[r]) {
+          const mode = fs.regions[r]!;
+          const fee = ENTRY_MODES[mode].fee * FINANCE.exitFeeShare;
+          pnl.exitFees = (pnl.exitFees ?? 0) + fee;
+          fs.capital -= fee;
+          for (const ps of Object.values(fs.products)) {
+            const lots = fs.inventory[ps.spec.id]?.[r];
+            const left = (lots ?? []).reduce((a, l) => a + l.units, 0);
+            if (left > 0) {
+              const uc = unitCostAt(ps.quotedUnitCost, ps.cumUnits, round, ps.briefedRound);
+              pnl.clearanceRevenue += left * uc * PRODUCTION.clearanceRecovery;
+              notes.push(`${Math.round(left).toLocaleString()} units of ${ps.spec.name} left in ${regionName(r)} were cleared at a discount when you exited.`);
+            }
+            if (fs.inventory[ps.spec.id]) fs.inventory[ps.spec.id][r] = [];
+          }
+          const { [r]: _gone, ...keep } = fs.regions;
+          fs.regions = keep;
+          fs.channelsOpen[r] = [];
+          fs.channelUnits[r] = {};
+          notes.push(`You exited ${regionName(r)} (one-time fee $${Math.round(fee).toLocaleString()}). Its overhead stops from this round.`);
+          rd.exit = false;
+          rd.enter = false;
+          rd.channels = [];
+          continue;
+        }
+        if (rd.exit) rd.exit = false;
         if (rd.enter && !fs.regions[r]) {
           const fee = ENTRY_MODES[rd.entryMode].fee;
           fs.regions[r] = rd.entryMode;
@@ -274,7 +340,10 @@ export function processRound(input: ProcessInput): RoundResult {
               fs.capital -= CHANNEL_TERMS[ch].setupFee;
             }
           }
-          fs.channelsOpen[r] = rd.channels.filter((c) => REGION_PROFILES[r].channels.includes(c));
+          const next = rd.channels.filter((c) => REGION_PROFILES[r].channels.includes(c));
+          // Leaving a channel is free, but coming back later starts over at the partner's normal margin.
+          for (const ch of open) if (!next.includes(ch) && fs.channelUnits[r]?.[ch]) fs.channelUnits[r]![ch] = 0;
+          fs.channelsOpen[r] = next;
         }
       }
     }
@@ -327,6 +396,7 @@ export function processRound(input: ProcessInput): RoundResult {
         fs.capital -= cost;
         pnl.expansion = cost;
         fs.pendingCapacity += d.capacityExpansion;
+        (fs.expansionAmort ??= []).push({ amount: cost, roundsLeft: FINANCE.expansionAmortRounds });
       } else notes.push("Capacity expansion was skipped: not enough company capital.");
     }
 
@@ -342,6 +412,7 @@ export function processRound(input: ProcessInput): RoundResult {
       goals: [],
       forecastAccuracy: 0,
       budget: { start: potStart, release, earned, spent: research + pnl.promotion, end: fs.marketingPot },
+      spendLimit: Number.isFinite(spendLimit) ? Math.round(spendLimit) : undefined,
       capital: { start: capitalStart, end: 0 },
       capacity: { capacity: fs.capacity, used: 0, overtime: 0, nextRound: fs.capacity + fs.pendingCapacity },
       concerns: [],
@@ -403,9 +474,9 @@ export function processRound(input: ProcessInput): RoundResult {
             for (const ch of fs.channelsOpen[r] ?? []) {
               if (CHANNEL_TERMS[ch].margin <= 0 || !REGION_PROFILES[r].channels.includes(ch)) continue;
               const mode = fs.regions[r]!;
-              const base = Math.min(1, CHANNEL_TERMS[ch].coverage * ENTRY_MODES[mode].coverageBoost);
+              const full = CHANNEL_TERMS[ch].coverage * ENTRY_MODES[mode].coverageBoost;
               const p = channelPush(ch, trade);
-              pr.channels[ch] = { push: p, reachBase: base, reachNow: Math.min(1, base * (1 + TRADE_PROMO.stockLift * p)) };
+              pr.channels[ch] = { push: p, reachBase: Math.min(1, full * stockingFactor(ch, 0)), reachNow: Math.min(1, full * stockingFactor(ch, trade)) };
             }
             promo.push(pr);
           }
@@ -683,13 +754,42 @@ export function processRound(input: ProcessInput): RoundResult {
 
     pnl.revenue = pnl.grossSales - pnl.partnerMargin - pnl.fulfillment + pnl.subscriptionRevenue + pnl.clearanceRevenue;
     const opsCosts = pnl.cogs + pnl.overtimePremium + pnl.holding + pnl.capacityFixed + pnl.overhead;
-    pnl.operatingProfit =
-      pnl.revenue - opsCosts - pnl.promotion - pnl.research - pnl.devFees - pnl.entryFees - pnl.channelSetup - pnl.expansion;
-    // Capital already paid fees/expansion above; now revenue in, operating costs out.
+    const oneTime = pnl.devFees + pnl.entryFees + pnl.channelSetup + (pnl.exitFees ?? 0) + pnl.expansion;
+    pnl.operatingProfit = pnl.revenue - opsCosts - pnl.promotion - pnl.research - (pnl.interest ?? 0) - oneTime;
+    // Expansion is spread over several rounds for scoring (amortization), starting the round it's paid for.
+    let amort = 0;
+    if (round >= 1 && fs.expansionAmort?.length) {
+      for (const e of fs.expansionAmort) {
+        amort += e.amount / FINANCE.expansionAmortRounds;
+        e.roundsLeft -= 1;
+      }
+      fs.expansionAmort = fs.expansionAmort.filter((e) => e.roundsLeft > 0);
+    }
+    pnl.expansionAmortized = amort;
+    // The Financial score uses profit before one-time costs, with expansion amortized.
+    pnl.scoredProfit = pnl.operatingProfit + oneTime - amort;
+    // Capital already paid fees, expansion and interest above; now revenue in, operating costs out.
     fs.capital += pnl.revenue - opsCosts;
     fs.lastRevenue = pnl.revenue;
+    // HQ emergency loan: cover any shortfall; repay automatically from capital above the cushion.
+    let borrowed = 0;
+    let repaid = 0;
+    if (fs.capital < 0) {
+      borrowed = -fs.capital;
+      fs.loan = (fs.loan ?? 0) + borrowed;
+      fs.capital = 0;
+      rep.notes.push(`Company capital ran out, so Vibe Electronics HQ lent you $${Math.round(borrowed).toLocaleString()}. You pay ${Math.round(FINANCE.loanInterestPerRound * 100)}% interest on the loan each round until it's repaid.`);
+    } else if ((fs.loan ?? 0) > 0 && fs.capital > FINANCE.loanRepayCushion) {
+      repaid = Math.min(fs.loan ?? 0, fs.capital - FINANCE.loanRepayCushion);
+      fs.loan = (fs.loan ?? 0) - repaid;
+      fs.capital -= repaid;
+      rep.notes.push(`You repaid $${Math.round(repaid).toLocaleString()} of HQ's loan${(fs.loan ?? 0) > 0 ? `; $${Math.round(fs.loan ?? 0).toLocaleString()} is still owed` : "; it's fully repaid"}.`);
+    }
     rep.capital.end = fs.capital;
-    for (const k of Object.keys(pnl) as (keyof PnL)[]) pnl[k] = Math.round(pnl[k]);
+    rep.capital.borrowed = Math.round(borrowed);
+    rep.capital.repaid = Math.round(repaid);
+    rep.capital.loan = Math.round(fs.loan ?? 0);
+    for (const k of Object.keys(pnl) as (keyof PnL)[]) pnl[k] = Math.round(pnl[k] ?? 0);
     for (const k of Object.keys(rep.byProduct)) {
       rep.byProduct[k].units = Math.round(rep.byProduct[k].units);
       rep.byProduct[k].revenue = Math.round(rep.byProduct[k].revenue);
@@ -706,7 +806,7 @@ export function processRound(input: ProcessInput): RoundResult {
   }
 
   // ---- 5. Scorecard ---------------------------------------------------------
-  const scores = round >= 1 ? scoreRound(firms, state, decisions, reports, demand, rows, rowFirm, settings) : {};
+  const scores = round >= 1 ? scoreRound(firms, state, decisions, reports, demand, rows, rowFirm, settings, input.prevResult ?? null) : {};
 
   // ---- 6. Goals, drivers and Top Concerns ----------------------------------
   for (const f of firms) {
@@ -787,6 +887,25 @@ export function firmSatisfaction(fs: FirmState, round: number): number {
   return live.reduce((a, p) => a + (fs.satisfaction[p.spec.id] ?? SATISFACTION.start), 0) / live.length;
 }
 
+/** Return on promotion is capped at this multiple, and needs at least this much promotion over 2 rounds to count. */
+const ROP_CAP = 8;
+const ROP_MIN_PROMO = 50_000;
+
+/** The partner margin that's normal for where these segments shop (base margins weighted by each segment's channel mix and size). */
+export function normalMargin(segs: SegmentId[]): number {
+  let m = 0;
+  let w = 0;
+  for (const s of segs) {
+    const size = regionIds.reduce((a, r) => a + SEGMENT_PROFILES[s].baseDemand[r], 0);
+    const mix = SEGMENT_PROFILES[s].channelMix;
+    let seg = 0;
+    for (const [ch, share] of Object.entries(mix) as [ChannelId, number][]) seg += share * CHANNEL_TERMS[ch].margin;
+    m += size * seg;
+    w += size;
+  }
+  return w ? m / w : 0.15;
+}
+
 function scoreRound(
   firms: FirmMeta[],
   state: GameState,
@@ -796,6 +915,7 @@ function scoreRound(
   rows: ShareRow[],
   rowFirm: Map<ShareRow, string>,
   settings: GameSettings,
+  prevResult: RoundResult | null = null,
 ): Record<string, ScoreBreakdown> {
   const segShares: Record<string, Partial<Record<SegmentId, number>>> = {};
   const segTotalSold: Record<string, number> = {};
@@ -829,20 +949,25 @@ function scoreRound(
     const fitAvg = live.length ? targets.reduce((a, s) => a + Math.max(...live.map((p) => fit(p.spec, s))), 0) / targets.length : 0;
     const customer = 0.4 * fitAvg + 0.3 * targetAwareness(fs, d, state.round) + 0.3 * firmSatisfaction(fs, state.round);
 
-    // Channel: coverage of target buyers in target regions, minus excess margin paid.
+    // Channel: coverage of target buyers in target regions (with the trade support actually given),
+    // reduced only when partner margins run above what's normal for the target segments' channels.
     const tRegions = d.strategy.targetRegions.length ? d.strategy.targetRegions : regionIds.filter((r) => fs.regions[r]);
+    const liveIds = Object.values(fs.products).filter((p) => !p.retired && p.launchRound <= state.round).map((p) => p.spec.id);
     let cov = 0;
     let covW = 0;
     for (const s of targets)
       for (const r of tRegions) {
         const w = demand[s][r];
-        cov += w * availability(fs, r, s, 0).total;
+        const best = liveIds.length
+          ? Math.max(...liveIds.map((pid) => availability(fs, r, s, Math.max(0, Number(d.plan[pid]?.[r]?.media?.trade) || 0)).total))
+          : availability(fs, r, s, 0).total;
+        cov += w * best;
         covW += w;
       }
     const coverage = covW ? cov / covW : 0;
     const gross = rep.pnl.grossSales;
     const avgMargin = gross > 0 ? rep.pnl.partnerMargin / gross : 0;
-    const channel = coverage * (1 - Math.max(0, avgMargin - 0.15));
+    const channel = coverage * (1 - Math.max(0, avgMargin - normalMargin(targets)));
 
     // Goals: forecast accuracy and closeness to the team's own numeric targets.
     const g = d.goals;
@@ -850,31 +975,39 @@ function scoreRound(
     // Share: one goal per target segment, each weighted equally, averaged into a single share goal.
     // Older decisions with one overall share goal still score against the combined share.
     const close = (goal: number, act: number) => Math.max(0, 1 - Math.abs(act - goal) / Math.abs(goal));
-    const segGoals = segmentShareGoals(d);
-    const shareCloseness = segGoals.length
-      ? segGoals.reduce((a, [s, goal]) => a + close(goal, (segShare[s] ?? 0) * 100), 0) / segGoals.length
-      : null;
-    const actuals: [number | null, number][] = [
-      ...(shareCloseness !== null ? [] : [[g.share, market * 100] as [number | null, number]]),
+    const blank = (v: number | null | undefined) => v === null || v === undefined || v === 0 || !Number.isFinite(v);
+    // A blank goal scores zero. Share: one goal per target segment, each weighted equally, averaged into one share goal.
+    // Older decisions with one overall share goal (and no per-segment goals) still score against the combined share.
+    const legacyShare = !blank(g.share) && segmentShareGoals(d).length === 0;
+    const shareCloseness = legacyShare
+      ? close(g.share as number, market * 100)
+      : targets.reduce((a, s) => {
+          const v = d.goals.segmentShare?.[s];
+          return a + (blank(v) ? 0 : close(v as number, (segShare[s] ?? 0) * 100));
+        }, 0) / Math.max(1, targets.length);
+    const others: [number | null, number][] = [
       [g.revenue, pnl.revenue],
       [g.margin, pnl.revenue > 0 ? (pnl.operatingProfit / pnl.revenue) * 100 : 0],
       [g.awareness, targetAwareness(fs, d, state.round) * 100],
       [g.satisfaction, firmSatisfaction(fs, state.round) * 100],
     ];
-    const set = actuals.filter(([goal]) => goal !== null && goal !== undefined && goal !== 0) as [number, number][];
-    const closenesses = [...set.map(([goal, act]) => close(goal, act)), ...(shareCloseness !== null ? [shareCloseness] : [])];
-    const goalAcc = closenesses.length ? closenesses.reduce((a, b) => a + b, 0) / closenesses.length : 0;
+    const closenesses = [shareCloseness, ...others.map(([goal, act]) => (blank(goal) ? 0 : close(goal as number, act)))];
+    const goalAcc = closenesses.reduce((a, b) => a + b, 0) / closenesses.length;
     const goals = 0.5 * rep.forecastAccuracy + 0.5 * goalAcc;
 
-    raw[f.id] = { market, customer, financial: pnl.operatingProfit, channel, goals };
+    raw[f.id] = { market, customer, financial: pnl.scoredProfit ?? pnl.operatingProfit, channel, goals };
     segShares[f.id] = segShare;
   }
 
-  // Return on promotion feeds the financial measure.
+  // Return on promotion feeds the financial measure: gross margin per promotion dollar over this round and last,
+  // capped so that cutting promotion to almost nothing can't max it out.
   const rop: Record<string, number> = {};
   for (const f of firms) {
     const p = reports[f.id].pnl;
-    rop[f.id] = p.promotion > 0 ? (p.revenue - p.cogs) / p.promotion : 0;
+    const q = prevResult?.reports[f.id]?.pnl;
+    const promo = p.promotion + (q?.promotion ?? 0);
+    const margin = p.revenue - p.cogs + (q ? q.revenue - q.cogs : 0);
+    rop[f.id] = promo >= ROP_MIN_PROMO ? Math.max(0, Math.min(ROP_CAP, margin / promo)) : 0;
   }
 
   const ids = firms.map((f) => f.id);
@@ -886,6 +1019,11 @@ function scoreRound(
     const hi = Math.max(...v);
     return hi === lo ? 50 : ((vals[id] - lo) / (hi - lo)) * 100;
   };
+  // Compared with the best firm, like the other parts. Losses score 0. If no firm made a profit, fall back to worst-to-best.
+  const vsBest = (vals: Record<string, number>, id: string) => {
+    const hi = Math.max(...ids.map((i) => vals[i]));
+    return hi > 0 ? (Math.max(0, vals[id]) / hi) * 100 : minmax(vals, id);
+  };
   const profit = Object.fromEntries(ids.map((i) => [i, raw[i].financial]));
   for (const id of ids) {
     const pts = {} as Record<ScoreKey, number>;
@@ -893,7 +1031,7 @@ function scoreRound(
       const b = best(k);
       pts[k] = b > 0 ? (raw[id][k] / b) * 100 : 0;
     }
-    pts.financial = 0.7 * minmax(profit, id) + 0.3 * minmax(rop, id);
+    pts.financial = 0.7 * vsBest(profit, id) + 0.3 * vsBest(rop, id);
     points[id] = pts;
   }
 
@@ -977,7 +1115,9 @@ function buildConcerns(f: FirmMeta, fs: FirmState, d: FirmDecision, rep: FirmRep
   const roundsLeft = ROUNDS.final - round;
   if (round >= 3 && roundsLeft > 0 && rep.budget.spent > 0 && fs.marketingPot < rep.budget.spent * roundsLeft * 0.6)
     c.push({ title: "Marketing budget burn rate", detail: `At this round's pace you will run out of marketing money before the final round (${Math.round(fs.marketingPot).toLocaleString()} left, ${roundsLeft} rounds to go).`, fix: "Pace promotion and research spending." });
-  if (fs.capital < 300_000) c.push({ title: "Company capital is low", detail: `Only $${Math.round(fs.capital).toLocaleString()} is left for engineering, production and capacity.`, fix: "Cut overproduction, raise prices where you can, or hold off on expansion." });
+  if ((fs.loan ?? 0) > 0)
+    c.push({ title: "You owe HQ an emergency loan", detail: `Capital ran out, so HQ lent the company money. $${Math.round(fs.loan ?? 0).toLocaleString()} is still owed, at ${Math.round(FINANCE.loanInterestPerRound * 100)}% interest a round charged to profit. It's repaid automatically from capital above $${FINANCE.loanRepayCushion.toLocaleString()}.`, fix: "Cut overproduction and one-time spending until the loan is repaid." });
+  else if (fs.capital < 300_000) c.push({ title: "Company capital is low", detail: `Only $${Math.round(fs.capital).toLocaleString()} is left for engineering, production and capacity.`, fix: "Cut overproduction, raise prices where you can, or hold off on expansion." });
   void f;
   return c;
 }

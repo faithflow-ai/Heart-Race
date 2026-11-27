@@ -56,7 +56,7 @@ export function syncPromotion(d: FirmDecision) {
 
 export function emptyDecision(): FirmDecision {
   const regions = {} as FirmDecision["regions"];
-  for (const r of REGIONS) regions[r.id] = { enter: false, entryMode: "distributor", channels: [] };
+  for (const r of REGIONS) regions[r.id] = { enter: false, exit: false, entryMode: "distributor", channels: [] };
   return {
     strategy: { companyName: "", mission: "", positioning: "", norms: "", posture: "", targetSegments: [], targetRegions: [] },
     goals: { share: null, segmentShare: {}, revenue: null, margin: null, awareness: null, satisfaction: null },
@@ -171,10 +171,19 @@ export function quote(p: ProductSpec, round: number): Quote {
   return { unitCost, devFee, leadTime: PRODUCT_COSTS.leadTimeRounds, lines, problems: specProblems(p) };
 }
 
-/** Unit cost after the learning curve. */
+/** How many volume milestones a product has passed, given its total units made so far. */
+export function milestonesPassed(cumUnits: number): number {
+  return PRODUCT_COSTS.volumeMilestones.filter((t) => cumUnits >= t).length;
+}
+
+/** The next volume milestone (units), or null once all are passed. */
+export function nextMilestone(cumUnits: number): number | null {
+  return PRODUCT_COSTS.volumeMilestones.find((t) => cumUnits < t) ?? null;
+}
+
+/** Unit cost after volume milestones and the industry-wide component price decline. */
 export function unitCostAt(quoted: number, cumUnits: number, round: number, briefedRound: number): number {
-  const doublings = cumUnits > 10_000 ? Math.log2(cumUnits / 10_000) : 0;
-  const learn = Math.max(PRODUCT_COSTS.learningFloor, Math.pow(1 - PRODUCT_COSTS.learningRate, doublings));
+  const learn = 1 - PRODUCT_COSTS.milestoneCut * milestonesPassed(cumUnits);
   const decline = Math.pow(1 - PRODUCT_COSTS.industryCostDeclinePerRound, Math.max(0, round - Math.max(1, briefedRound)));
   return quoted * learn * decline;
 }

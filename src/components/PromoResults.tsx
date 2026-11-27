@@ -113,9 +113,9 @@ export function ProjectedVsActual({ pf, pnl }: { pf: ProForma; pnl: PnL }) {
     promotion: -pnl.promotion,
     research: -pnl.research,
     devFees: -pnl.devFees,
-    entry: -(pnl.entryFees + pnl.channelSetup),
+    entry: -(pnl.entryFees + pnl.channelSetup + (pnl.exitFees ?? 0)),
     expansion: -pnl.expansion,
-    fixed: -(pnl.overhead + pnl.capacityFixed),
+    fixed: -(pnl.overhead + pnl.capacityFixed + (pnl.interest ?? 0)),
     operatingProfit: pnl.operatingProfit,
   };
   return (
