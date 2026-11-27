@@ -79,8 +79,10 @@ export interface FirmDecision {
     targetRegions: RegionId[];
   };
   goals: {
-    /** Share of target segments, percent. */
+    /** Share of all target segments together, percent (older decisions only; now set per segment). */
     share: number | null;
+    /** Share goal for each target segment, percent. Each segment goal counts equally in goal accuracy. */
+    segmentShare: Partial<Record<SegmentId, number | null>>;
     revenue: number | null;
     /** Operating margin, percent. */
     margin: number | null;
@@ -201,6 +203,8 @@ export interface PnL {
 
 export interface ScoreBreakdown {
   raw: Record<ScoreKey, number>;
+  /** Share of units sold in each target segment (0 to 1). */
+  segShare?: Partial<Record<SegmentId, number>>;
   points: Record<ScoreKey, number>;
   total: number;
   rank: number;

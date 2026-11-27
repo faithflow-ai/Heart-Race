@@ -38,6 +38,10 @@ export const GET = handle(async (_req: Request, ctx: Ctx) => {
       lastEdit: status.find((s) => s.firm_id === f.id)?.last ?? null,
       ready: ready.has(f.id),
       lastScore: latest?.scores[f.id] ?? null,
+      // For the guest's Start here panel: what each team said it was going for.
+      plan: !f.is_ai && latest?.decisions?.[f.id]
+        ? { targets: latest.decisions[f.id].strategy.targetSegments, positioning: latest.decisions[f.id].strategy.positioning }
+        : null,
     })),
     rounds,
     flagged,

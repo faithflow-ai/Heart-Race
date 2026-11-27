@@ -7,6 +7,8 @@ export interface TeamData {
   user: { id: string; name: string; email: string };
   /** true when an instructor is looking at this team's screens (read-only). */
   viewAs: boolean;
+  /** true for the read-only showcase guest login (colleagues). */
+  guest: boolean;
   game: { id: string; name: string; status: string; round: number; deadline: string | null; timezone: string };
   firm: { id: string; name: string };
   members: { name: string; email: string }[];

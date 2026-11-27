@@ -92,6 +92,10 @@ export function describeChange(path: string, oldV: unknown, newV: unknown, names
     if (!oldV) return `wrote the ${label}: ${text(newV)}`;
     return `edited the ${label}: ${text(newV)}`;
   }
+  if (head === "goals" && a === "segmentShare") {
+    if (b) return fromTo(`share goal for ${SEG[b] ?? b}`, numText(oldV, "pct"), numText(newV, "pct"));
+    return "";
+  }
   if (head === "goals" && a) {
     const kind = a === "revenue" ? "money" : "pct";
     return fromTo(GOAL_LABELS[a] ?? a, numText(oldV, kind), numText(newV, kind));

@@ -2,6 +2,8 @@
 import { TopBar } from "@/components/TopBar";
 import { api } from "@/components/client";
 import { TeamProvider, useTeam } from "@/components/TeamContext";
+import { AboutScreen } from "@/components/AboutScreen";
+import { Suspense } from "react";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { team, error } = useTeam();
@@ -23,7 +25,9 @@ function Shell({ children }: { children: React.ReactNode }) {
       />
       {team?.viewAs && (
         <div className="viewas">
-          <b>View as student (read-only):</b> you&apos;re seeing {team.firm.name}&apos;s screens in {team.game.name}. Nothing you do here changes their decisions.
+          <span>
+            <b>{team.guest ? `You're viewing ${team.firm.name} as a guest.` : `View as student: ${team.firm.name}.`}</b> Everything on these screens was entered by this team&apos;s students. Read-only: nothing you do here changes anything.
+          </span>
           <button
             onClick={async () => {
               await api(`/api/games/${team.game.id}/viewas`, { method: "DELETE" });
@@ -36,6 +40,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       )}
       <div className="page">
         {error && !team && <div className="notice bad">{error}</div>}
+        {team?.viewAs && <Suspense fallback={null}><AboutScreen team={team} /></Suspense>}
         {team ? children : !error && <p className="muted">Loading…</p>}
       </div>
     </>

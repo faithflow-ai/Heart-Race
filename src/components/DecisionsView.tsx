@@ -28,8 +28,10 @@ export function DecisionsView({ d, round, accepted = {} }: { d: FirmDecision; ro
   const s = d.strategy;
   const regions = REGIONS.filter((r) => d.regions[r.id]?.enter);
   const planRows = d.products.flatMap((p) => REGIONS.filter((r) => d.plan[p.id]?.[r.id]).map((r) => ({ p, r, pl: d.plan[p.id][r.id] })));
+  const s0 = d.strategy;
   const goalRows: [string, number | null, (v: number) => string][] = [
-    ["Share of target segments", d.goals.share, (v) => `${v}%`],
+    ...(d.goals.share !== null && d.goals.share !== undefined ? [["Share of target segments", d.goals.share, (v: number) => `${v}%`] as [string, number | null, (v: number) => string]] : []),
+    ...s0.targetSegments.map((id) => [`Share of ${SEGMENTS.find((x) => x.id === id)?.name ?? id}`, d.goals.segmentShare?.[id] ?? null, (v: number) => `${v}%`] as [string, number | null, (v: number) => string]),
     ["Revenue", d.goals.revenue, (v) => money(v)],
     ["Operating margin", d.goals.margin, (v) => `${v}%`],
     ["Awareness in targets", d.goals.awareness, (v) => `${v}%`],

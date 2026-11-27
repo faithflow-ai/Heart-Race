@@ -206,7 +206,7 @@ export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
   }
 
   // Goals: rough but numeric.
-  d.goals = { share: 10, revenue: Math.round(cells.reduce((a, c) => a + d.plan[c.p.id][c.r].forecast * d.plan[c.p.id][c.r].price * 0.75, 0)), margin: 5, awareness: 30, satisfaction: 65 };
+  d.goals = { share: null, segmentShare: Object.fromEntries(d.strategy.targetSegments.map((t) => [t, 10])), revenue: Math.round(cells.reduce((a, c) => a + d.plan[c.p.id][c.r].forecast * d.plan[c.p.id][c.r].price * 0.75, 0)), margin: 5, awareness: 30, satisfaction: 65 };
   void CHANNELS;
   return d;
 }

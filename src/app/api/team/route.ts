@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { isGuest, requireUser } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { budgetEstimate, getDecision, getFirms, latestResult, processedRounds } from "@/lib/game";
 import { studentContext } from "@/lib/access";
@@ -18,6 +18,7 @@ export const GET = handle(async () => {
   return {
     user,
     viewAs: !!viewAs,
+    guest: isGuest(user),
     game: { id: game.id, name: game.name, status: game.status, round: game.current_round, deadline: game.deadline, timezone: game.timezone },
     firm: { id: firm.id, name: firm.name },
     members,

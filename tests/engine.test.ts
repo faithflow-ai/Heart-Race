@@ -85,3 +85,23 @@ describe("engine", () => {
     expect(strong).toBeGreaterThan(weak);
   });
 });
+
+describe("per-segment share goals", () => {
+  it("reports goal vs. actual for each target segment and keeps scoring in range", () => {
+    const results = playSeason(11);
+    const r = results[3];
+    const firmId = Object.keys(r.reports)[0];
+    const d = r.decisions[firmId];
+    const shareRows = r.reports[firmId].goals.filter((g) => g.key.startsWith("share:"));
+    expect(shareRows.length).toBe(d.strategy.targetSegments.length);
+    for (const g of shareRows) {
+      expect(g.goal).toBe(10);
+      expect(g.actual).toBeGreaterThanOrEqual(0);
+      expect(g.actual).toBeLessThanOrEqual(100);
+    }
+    for (const s of Object.values(r.scores)) {
+      expect(s.raw.goals).toBeGreaterThanOrEqual(0);
+      expect(s.raw.goals).toBeLessThanOrEqual(1);
+    }
+  });
+});
