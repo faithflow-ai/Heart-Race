@@ -127,7 +127,7 @@
   - Claude's recommendation: one in-progress class plus the finished showcase is enough. A third class would add setup without showing anything new.
   - As built: Create showcase class now makes both classes. Products, regions, channels and strategy carry over into Round 2; the weekly inputs (prices, promotion, forecast, production, goals) start at zero or blank. Deleting the finished class also deletes the class in progress.
 
-## Nov 27: Branding and look (proposed, waiting for Victor's pick and go)
+## Nov 27: Branding and look (Victor picked Pulse Nov 27; waiting for go)
 
 Look book with 3 brand directions and mockups: https://claude.ai/artifact/Jfvo5wV3orCMr1xFTKQRAk. Claude recommends A (Pulse: navy, pulse red, mint; heartbeat-line logo; Space Grotesk + Inter), plus "A Vibe Electronics simulation" under the logo and board meetings on the round tracker (from C).
 
@@ -144,6 +144,20 @@ Look book with 3 brand directions and mockups: https://claude.ai/artifact/Jfvo5w
 - [P3] Results – Short "round scored" reveal card (rank change, top win, top concern)
 - [P3] Instructor – Class screen and dashboard in the new style
 - [P3] App-wide – Logo files and favicon (also for slides and syllabus)
+
+Added Nov 27 after Victor picked Pulse (look book Part 2):
+
+- [P1] Decisions – Layout: replace the 6 tabs with a left step list (done / needs attention / locked until Round X), a right rail with budget and capital left updating as students type plus last round's value for the same field, and a bottom bar (Saved, who edited last, Next step). Supersedes the P1 tab status item above
+- [P1] App-wide – Round tracker shows board meetings (R4 and Final) with an amber mark
+- [P2] App-wide – Teammates online: initials in the top bar and which screen each teammate is on
+- [P2] App-wide – Glossary: marketing terms get a dotted underline with a hover definition and a link to the Learn lesson
+- [P2] Results – Charts highlight your team in red and rivals in grey
+- [P2] App-wide – Graphic kit: segment icons (also on research, targeting and charts), region outlines, status chips with one meaning per color, team badges (AI rivals grey)
+- [P2] App-wide – Empty states that teach (e.g., no research yet points to where most teams start, without telling them what to do)
+- [P2] Home – Pre-deadline warnings for gaps (e.g., $0 promotion in a target region, production far from forecast)
+- [P3] App-wide – Pulse line used sparingly: loading animation, login divider, round-scored moment
+- [P3] Instructor – Class heatmap of who's ready, team badges on the dashboard
+- [—] Dark mode: not planned (Claude's recommendation)
 
 ## Later batch (queued Nov 23, not in the current build)
 
