@@ -88,6 +88,7 @@ export function describeChange(path: string, oldV: unknown, newV: unknown, names
     if (a === "targetSegments") return fromTo(label, list(oldV, SEG), list(newV, SEG));
     if (a === "targetRegions") return fromTo(label, list(oldV, REG), list(newV, REG));
     if (a === "posture") return fromTo(label, POSTURE[String(oldV ?? "")] ?? String(oldV), POSTURE[String(newV ?? "")] ?? String(newV));
+    if (a === "positionMap") return "updated the positioning map";
     if (a === "companyName") return oldV ? fromTo(label, text(oldV), text(newV)) : `named the company ${text(newV)}`;
     if (!oldV) return `wrote the ${label}: ${text(newV)}`;
     return `edited the ${label}: ${text(newV)}`;

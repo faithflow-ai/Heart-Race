@@ -2,6 +2,7 @@
 import { CHANNELS, REGIONS, ROUNDS, SCORECARD_WEIGHTS, SEGMENTS, type ScoreKey, type SegmentId } from "@/sim/config";
 import type { FirmReport, ScoreBreakdown } from "@/sim/types";
 import { money, num, pct } from "./client";
+import { TeamBadge, teamColor } from "./team";
 import { PromoResults, ProjectedVsActual } from "./PromoResults";
 import type { ProForma } from "@/sim/proforma";
 
@@ -16,6 +17,8 @@ export interface LeaderRow {
   mine?: boolean;
   total: number | null;
   rank: number | null;
+  color?: string | null;
+  slot?: number;
 }
 
 export function ReportView({ round, report, score, leaderboard, names, proforma, targets = [] }: { round: number; report: FirmReport; score: ScoreBreakdown | null; leaderboard?: LeaderRow[]; names: Record<string, string>; proforma?: ProForma | null; targets?: SegmentId[] }) {
@@ -33,7 +36,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
       {round >= 1 && score && (
         <div className="grid2">
           <div className="panel">
-            <h2 style={{ marginTop: 0 }}>Scorecard</h2>
+            <h2 style={{ marginTop: 0 }} id="scorecard">Scorecard</h2>
             <div className="row">
               <div className="stat" style={{ flex: 1 }}><div className="k">Total</div><div className="v">{score.total.toFixed(1)}</div><div className="s">out of 100</div></div>
               <div className="stat" style={{ flex: 1 }}><div className="k">Rank</div><div className="v">{score.rank} of 8</div><div className="s">including AI rivals</div></div>
@@ -55,14 +58,14 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
           </div>
           {leaderboard && (
             <div className="panel">
-              <h2 style={{ marginTop: 0 }}>Leaderboard</h2>
+              <h2 style={{ marginTop: 0 }} id="leaderboard">Leaderboard</h2>
               <table>
                 <thead><tr><th>#</th><th>Firm</th><th className="num">Score</th></tr></thead>
                 <tbody>
                   {leaderboard.map((l) => (
                     <tr key={l.id} className={l.mine ? "mine" : ""}>
                       <td>{l.rank}</td>
-                      <td>{l.name} {l.isAi && <span className="badge">AI</span>}</td>
+                      <td><span className="firmcell"><TeamBadge name={l.name} color={teamColor(l.color, l.slot, l.isAi)} />{l.name} {l.isAi && <span className="badge">AI</span>}</span></td>
                       <td className="num">{l.total?.toFixed(1)}</td>
                     </tr>
                   ))}
@@ -75,7 +78,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
 
       {r.concerns.length > 0 && (
         <div className="panel">
-          <h2 style={{ marginTop: 0 }}>Top Concerns</h2>
+          <h2 style={{ marginTop: 0 }} id="concerns">Top concerns</h2>
           {r.concerns.map((c, i) => (
             <div key={i} className="notice warn"><b>{c.title}.</b> {c.detail} <i>How to fix: {c.fix}</i></div>
           ))}
@@ -85,7 +88,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
       {round >= 1 && (
         <>
           <div className="panel">
-            <h2 style={{ marginTop: 0 }}>What changed and why</h2>
+            <h2 style={{ marginTop: 0 }} id="changed">What changed and why</h2>
             {!r.drivers.length && <p className="muted">No sales in your target segments this round.</p>}
             <table>
               <thead><tr><th>Product</th><th>Target segment</th><th className="num">Share last round</th><th className="num">Share now</th><th>Biggest drivers</th></tr></thead>
@@ -108,7 +111,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
 
           <div className="grid2">
             <div className="panel">
-              <h2 style={{ marginTop: 0 }}>Profit and loss</h2>
+              <h2 style={{ marginTop: 0 }} id="pnl">Profit and loss</h2>
               <div className="kv">
                 <div>Sales at list price</div><div>{money(pnl.grossSales)}</div>
                 <div>Partner margins</div><div>-{money(pnl.partnerMargin)}</div>
@@ -130,7 +133,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
               </div>
             </div>
             <div className="panel">
-              <h2 style={{ marginTop: 0 }}>Goals vs. actual</h2>
+              <h2 style={{ marginTop: 0 }} id="goals">Goals vs. actual</h2>
               <table>
                 <thead><tr><th>Goal</th><th className="num">Target</th><th className="num">Actual</th></tr></thead>
                 <tbody>
@@ -159,7 +162,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
           {r.promo && <PromoResults promo={r.promo} names={names} targets={targets} />}
 
           <div className="panel">
-            <h2 style={{ marginTop: 0 }}>Supply: forecast, production and sales</h2>
+            <h2 style={{ marginTop: 0 }} id="supply">Supply: forecast, production and sales</h2>
             <table>
               <thead><tr><th>Product</th><th>Region</th><th className="num">Forecast</th><th className="num">Produced</th><th className="num">Demand</th><th className="num">Sold</th><th className="num">Lost (stockout)</th><th className="num">Left in stock</th></tr></thead>
               <tbody>
@@ -181,7 +184,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
 
           <div className="grid2">
             <div className="panel">
-              <h2 style={{ marginTop: 0 }}>By product</h2>
+              <h2 style={{ marginTop: 0 }} id="by-product">By product</h2>
               <table>
                 <thead><tr><th>Product</th><th className="num">Units</th><th className="num">Revenue</th><th className="num">Unit cost</th><th className="num">Satisfaction</th></tr></thead>
                 <tbody>
@@ -200,7 +203,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
               </table>
             </div>
             <div className="panel">
-              <h2 style={{ marginTop: 0 }}>By channel</h2>
+              <h2 style={{ marginTop: 0 }} id="by-channel">By channel</h2>
               <table>
                 <thead><tr><th>Channel</th><th className="num">Units</th><th className="num">Net revenue</th><th className="num">Margin paid</th></tr></thead>
                 <tbody>
@@ -213,7 +216,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
           </div>
 
           <div className="panel">
-            <h2 style={{ marginTop: 0 }}>Sales and share by segment and region</h2>
+            <h2 style={{ marginTop: 0 }} id="share">Sales and share by segment and region</h2>
             <div className="scroll">
               <table>
                 <thead><tr><th>Product</th><th>Segment</th><th>Region</th><th className="num">Price</th><th className="num">Units</th><th className="num">Share</th><th className="num">Fit</th><th className="num">Price appeal</th><th className="num">Awareness</th><th className="num">Reach</th></tr></thead>

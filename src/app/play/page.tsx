@@ -102,7 +102,7 @@ export default function TeamHome() {
               {last.report.notes.map((n, i) => (
                 <div key={i} className="notice info">{n}</div>
               ))}
-              {last.report.concerns.length > 0 && <h3>Top Concerns</h3>}
+              {last.report.concerns.length > 0 && <h3>Top concerns</h3>}
               {last.report.concerns.slice(0, 4).map((c, i) => (
                 <div key={i} className="notice warn">
                   <b>{c.title}.</b> {c.detail} <i>Fix: {c.fix}</i>

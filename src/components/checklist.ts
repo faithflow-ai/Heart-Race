@@ -1,4 +1,5 @@
 import { PRODUCT_RULES, REGIONS, ROUNDS, UNLOCKS } from "@/sim/config";
+import { MAP_REQUIRED_ROUNDS } from "@/sim/perception";
 import type { TeamData } from "./TeamContext";
 
 /** The six decision steps, in order. `unlock` is the first round the step opens. */
@@ -36,6 +37,11 @@ export function checklistItems(t: TeamData): { text: string; tab: StepId }[] {
   if (!d.strategy.norms.trim()) add("Team charter is blank", "strategy");
   if (!d.strategy.targetSegments.length) add("No target segments chosen", "strategy");
   if (!d.strategy.targetRegions.length) add("No target regions chosen", "strategy");
+  const pm = d.strategy.positionMap;
+  if (MAP_REQUIRED_ROUNDS.includes(round)) {
+    if (!pm?.x || !pm?.y) add("Positioning map not drawn yet (required this round)", "strategy");
+    else if (pm.confirmedRound !== round) add("Positioning map not confirmed for this round", "strategy");
+  }
   const drafts = d.products.filter((p) => !committed.has(p.id) && !p.retire);
   if (!d.products.length && round < PRODUCT_RULES.thirdProductBriefRound + 1) add("No product briefs yet: products briefed this round are ready to sell next round", "products");
   for (const p of drafts) {

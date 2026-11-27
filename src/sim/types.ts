@@ -77,6 +77,10 @@ export interface FirmDecision {
     posture: "differentiate" | "cost" | "niche" | "follow" | "";
     targetSegments: SegmentId[];
     targetRegions: RegionId[];
+    /** Positioning map the team drew (Nov 2026). Missing in older decisions. */
+    positionMap?: import("./perception").PositionMap;
+    /** Team color picked in Practice (hex from TEAM_COLORS). Missing in older decisions. */
+    teamColor?: string;
   };
   goals: {
     /** Share of all target segments together, percent (older decisions only; now set per segment). */

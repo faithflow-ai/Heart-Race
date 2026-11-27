@@ -28,6 +28,9 @@ import {
   type ToneId,
 } from "@/sim/config";
 import { PromoSummary } from "@/components/PromoSummary";
+import { PositionMapEditor } from "@/components/PositionMapEditor";
+import { Term } from "@/components/Glossary";
+import { TEAM_COLORS, TeamBadge, teamColor } from "@/components/team";
 import { proForma } from "@/sim/proforma";
 import { LEARN } from "@/sim/content";
 import { newProduct, quote, supportedClaims } from "@/sim/product";
@@ -61,15 +64,26 @@ function Learn({ id }: { id: string }) {
   );
 }
 
-function NumIn({ value, onChange, step = 1, min = 0, disabled }: { value: number | null | undefined; onChange: (v: number | null) => void; step?: number; min?: number; disabled?: boolean }) {
+/** Number input that shows thousands separators (500,000) except while you type. */
+function NumIn({ value, onChange, min = 0, disabled }: { value: number | null | undefined; onChange: (v: number | null) => void; step?: number; min?: number; disabled?: boolean }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? (value === null || value === undefined ? "" : value.toLocaleString("en-US", { maximumFractionDigits: 2 }));
   return (
     <input
-      type="number"
-      step={step}
-      min={min}
+      type="text"
+      inputMode="decimal"
+      className="num-in"
       disabled={disabled}
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+      value={shown}
+      onFocus={() => setDraft(value === null || value === undefined ? "" : String(value))}
+      onBlur={() => setDraft(null)}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^0-9.\-]/g, "");
+        setDraft(raw);
+        if (raw === "" || raw === "-" || raw === ".") return onChange(null);
+        const n = Number(raw);
+        if (!Number.isNaN(n)) onChange(min !== undefined && min >= 0 ? Math.max(min, n) : n);
+      }}
     />
   );
 }
@@ -175,11 +189,20 @@ function Strategy() {
   const g = t.decision.goals;
   const toggle = (path: string, list: string[], id: string) => set(path, list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   return (
+    <>
     <div className="grid2">
       <div className="panel">
         <Learn id="strategy" />
         <label>Company name</label>
         <input type="text" value={s.companyName} onChange={(e) => set("strategy.companyName", e.target.value)} placeholder={t.firm.name} />
+        <label>Team color</label>
+        <div className="swatches" role="radiogroup" aria-label="Team color">
+          {TEAM_COLORS.map((c) => (
+            <button key={c} type="button" role="radio" aria-checked={teamColor(s.teamColor, undefined, false) === c && !!s.teamColor} aria-label={`Color ${c}`} className={`swatch ${s.teamColor === c ? "on" : ""}`} style={{ background: c }} onClick={() => set("strategy.teamColor", c)} />
+          ))}
+          <TeamBadge name={s.companyName || t.firm.name} color={teamColor(s.teamColor, undefined, false)} size={28} />
+        </div>
+        <p className="small muted" style={{ marginTop: 4 }}>Shows on the leaderboard and charts so your team is easy to spot.</p>
         <label>Mission</label>
         <p className="small muted" style={{ marginTop: 0 }}>Why your company exists, in one or two sentences. Ask: Who do we serve? What need do we meet? What do we offer that others don&apos;t? What do we stand for?</p>
         <textarea value={s.mission} onChange={(e) => set("strategy.mission", e.target.value)} placeholder="We help [customers] [achieve / solve ___] by [offering ___], unlike [alternatives]." />
@@ -267,6 +290,8 @@ function Strategy() {
         </div>
       </div>
     </div>
+    <PositionMapEditor />
+    </>
   );
 }
 
@@ -558,8 +583,8 @@ function Pricing() {
       {!prods.length && <div className="notice warn">You have no products on the market this round. Products are ready one round after engineering accepts the brief.</div>}
       {!regions.length && <div className="notice warn">Enter at least one region on the Markets & channels screen first.</div>}
       <div className="notice info small">
-        Enter promotion in <b>dollars for each medium</b>, for each product in each region. <b>Digital & social, Search and Traditional media</b> are consumer ads (pull): they build awareness in every segment, most in the segments each medium reaches best.{" "}
-        <b>Trade promotion</b> pays your channel partners for displays, shelf space and staff incentives (push): buyers who shop there meet your brand in the store. It works only through partners, not your own website. You don&apos;t have to spend the whole budget; whatever is left carries over.
+        Enter promotion in <b>dollars for each medium</b>, for each product in each region. <b>Digital & social, Search and Traditional media</b> are consumer ads (<Term t="pull">pull</Term>): they build <Term t="awareness">awareness</Term> in every segment, most in the segments each medium reaches best.{" "}
+        <b><Term t="trade promotion">Trade promotion</Term></b> pays your channel partners for displays, shelf space and staff incentives (<Term t="push">push</Term>): buyers who shop there meet your brand in the store. It works only through partners, not your own website. You don&apos;t have to spend the whole budget; whatever is left carries over.
       </div>
       {prods.map((p) => {
         const truthful = supportedClaims(p);
@@ -856,7 +881,7 @@ function ProFormaPanel() {
   });
   return (
     <div className="panel">
-      <h3 style={{ marginTop: 0 }}>Projected profit and loss (pro forma)</h3>
+      <h3 style={{ marginTop: 0 }}>Projected profit and loss (<Term t="pro forma">pro forma</Term>)</h3>
       <p className="small muted" style={{ marginTop: 0 }}><b>Based on your forecast and decisions, not a prediction of the market.</b> It assumes you sell exactly your forecast (up to the units you have), split evenly across each region&apos;s channels. It updates as you edit. After the round, Results shows projected vs. actual.</p>
       <div className="grid2">
         <table>
