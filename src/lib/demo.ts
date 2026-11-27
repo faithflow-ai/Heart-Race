@@ -235,6 +235,9 @@ export async function deleteDemoGame(instructor: User, gameId: string) {
   const info = demoInfo(g);
   if (!info) throw new HttpError(400, "Only demo classes can be deleted here.");
   await q("delete from games where id = $1", [g.id]);
+  // A finished showcase class takes its class in progress with it.
+  const pairId = (settingsOf(g) as unknown as { showcase?: { pairId?: string } }).showcase?.pairId;
+  if (pairId && (await one<{ id: string }>("select id from games where id = $1 and instructor_id = $2", [pairId, instructor.id]))) await deleteDemoGame(instructor, pairId);
   // Remove only the fake accounts this demo created (and only if they're in no other class).
   for (const id of info.userIds) {
     await q(`delete from users where id = $1 and email like $2 and not exists (select 1 from members where user_id = $1)`, [id, `%@${DEMO_EMAIL_DOMAIN}`]);

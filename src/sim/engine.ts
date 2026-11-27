@@ -717,7 +717,9 @@ export function processRound(input: ProcessInput): RoundResult {
     if (round >= 1 && sc) {
       const pnl = rep.pnl;
       rep.goals = [
-        { key: "share", label: "Share of target segments (%)", goal: d.goals.share, actual: round1(sc.raw.market * 100) },
+        ...(segmentShareGoals(d).length || d.goals.share === null
+          ? targetsOf(d).map((s) => ({ key: `share:${s}`, label: `Share of ${SEGMENTS.find((x) => x.id === s)?.name ?? s} (%)`, goal: d.goals.segmentShare[s] ?? null, actual: round1((sc.segShare?.[s] ?? 0) * 100) }))
+          : [{ key: "share", label: "Share of target segments (%)", goal: d.goals.share, actual: round1(sc.raw.market * 100) }]),
         { key: "revenue", label: "Revenue ($)", goal: d.goals.revenue, actual: pnl.revenue },
         { key: "margin", label: "Operating margin (%)", goal: d.goals.margin, actual: pnl.revenue > 0 ? round1((pnl.operatingProfit / pnl.revenue) * 100) : 0 },
         { key: "awareness", label: "Awareness in target segments (%)", goal: d.goals.awareness, actual: round1(targetAwareness(fs, d, round) * 100) },
@@ -746,6 +748,14 @@ export function processRound(input: ProcessInput): RoundResult {
 
 function round1(n: number) {
   return Math.round(n * 10) / 10;
+}
+
+/** Share goals the team set for its target segments (blank or zero goals don't count). */
+function segmentShareGoals(d: FirmDecision): [SegmentId, number][] {
+  return targetsOf(d).flatMap((s) => {
+    const v = d.goals.segmentShare?.[s];
+    return v === null || v === undefined || v === 0 ? [] : [[s, v] as [SegmentId, number]];
+  });
 }
 
 function targetsOf(d: FirmDecision): SegmentId[] {
@@ -787,6 +797,7 @@ function scoreRound(
   rowFirm: Map<ShareRow, string>,
   settings: GameSettings,
 ): Record<string, ScoreBreakdown> {
+  const segShares: Record<string, Partial<Record<SegmentId, number>>> = {};
   const segTotalSold: Record<string, number> = {};
   for (const x of rows) segTotalSold[x.segment] = (segTotalSold[x.segment] ?? 0) + x.units;
   const segSize: Record<string, number> = {};
@@ -803,9 +814,11 @@ function scoreRound(
     // Market: size-weighted share of units sold in target segments.
     let wsum = 0;
     let wshare = 0;
+    const segShare: Partial<Record<SegmentId, number>> = {};
     for (const s of targets) {
       const mine = myRows.filter((x) => x.segment === s).reduce((a, x) => a + x.units, 0);
       const share = segTotalSold[s] > 0 ? mine / segTotalSold[s] : 0;
+      segShare[s] = share;
       wshare += segSize[s] * share;
       wsum += segSize[s];
     }
@@ -834,18 +847,27 @@ function scoreRound(
     // Goals: forecast accuracy and closeness to the team's own numeric targets.
     const g = d.goals;
     const pnl = rep.pnl;
+    // Share: one goal per target segment, each weighted equally, averaged into a single share goal.
+    // Older decisions with one overall share goal still score against the combined share.
+    const close = (goal: number, act: number) => Math.max(0, 1 - Math.abs(act - goal) / Math.abs(goal));
+    const segGoals = segmentShareGoals(d);
+    const shareCloseness = segGoals.length
+      ? segGoals.reduce((a, [s, goal]) => a + close(goal, (segShare[s] ?? 0) * 100), 0) / segGoals.length
+      : null;
     const actuals: [number | null, number][] = [
-      [g.share, market * 100],
+      ...(shareCloseness !== null ? [] : [[g.share, market * 100] as [number | null, number]]),
       [g.revenue, pnl.revenue],
       [g.margin, pnl.revenue > 0 ? (pnl.operatingProfit / pnl.revenue) * 100 : 0],
       [g.awareness, targetAwareness(fs, d, state.round) * 100],
       [g.satisfaction, firmSatisfaction(fs, state.round) * 100],
     ];
     const set = actuals.filter(([goal]) => goal !== null && goal !== undefined && goal !== 0) as [number, number][];
-    const goalAcc = set.length ? set.reduce((a, [goal, act]) => a + Math.max(0, 1 - Math.abs(act - goal) / Math.abs(goal)), 0) / set.length : 0;
+    const closenesses = [...set.map(([goal, act]) => close(goal, act)), ...(shareCloseness !== null ? [shareCloseness] : [])];
+    const goalAcc = closenesses.length ? closenesses.reduce((a, b) => a + b, 0) / closenesses.length : 0;
     const goals = 0.5 * rep.forecastAccuracy + 0.5 * goalAcc;
 
     raw[f.id] = { market, customer, financial: pnl.operatingProfit, channel, goals };
+    segShares[f.id] = segShare;
   }
 
   // Return on promotion feeds the financial measure.
@@ -881,6 +903,7 @@ function scoreRound(
     const total = (Object.keys(w) as ScoreKey[]).reduce((a, k) => a + w[k] * points[id][k], 0);
     out[id] = {
       raw: raw[id],
+      segShare: segShares[id],
       points: Object.fromEntries(Object.entries(points[id]).map(([k, v]) => [k, round1(v)])) as Record<ScoreKey, number>,
       total: round1(total),
       rank: 0,

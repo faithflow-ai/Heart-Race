@@ -14,7 +14,7 @@ export default function AdminHome() {
   const [guest, setGuest] = useState(false);
   const [showcase, setShowcase] = useState<string | null>(null);
   async function createShowcase() {
-    if (!window.confirm("Create a showcase class? It adds a separate class with 4 teams that have played every round, from Practice to the Final round, plus a read-only guest login you can give colleagues. Building it takes a minute or two. Your other classes are not touched, and you can delete it any time.")) return;
+    if (!window.confirm("Create a showcase class? It adds 2 separate classes with the same 4 teams: one that has played every round, from Practice to the Final round, and one in progress with Round 2 open, where guests can type in the fields to try them (nothing is saved). One read-only guest login sees both. Building them takes a few minutes. Your other classes are not touched, and you can delete it any time.")) return;
     setErr("");
     try {
       setShowcase("Creating the class and teams…");
@@ -22,7 +22,13 @@ export default function AdminHome() {
       let done = false;
       while (!done) {
         const st = await api(`/api/games/${r.game.id}/showcase`, { body: {} });
-        setShowcase(`Playing the rounds: ${st.built} of ${st.total} done…`);
+        setShowcase(`Finished class: ${st.built} of ${st.total} rounds played…`);
+        done = st.done;
+      }
+      done = !r.pairId;
+      while (!done) {
+        const st = await api(`/api/games/${r.pairId}/showcase`, { body: {} });
+        setShowcase(`Class in progress: ${st.built} of ${st.total} rounds played…`);
         done = st.done;
       }
       window.location.href = `/admin/${r.game.id}`;

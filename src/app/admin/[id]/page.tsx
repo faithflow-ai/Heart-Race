@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, use, useCallback, useEffect, useState } from "react";
 import { api, fmtTime, money, timeLeft } from "@/components/client";
-import { AI, ROUNDS, type AiStyle } from "@/sim/config";
+import { AI, ROUNDS, SEGMENTS, type AiStyle } from "@/sim/config";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const ZONES = ["America/Los_Angeles", "America/Denver", "America/Chicago", "America/New_York"];
@@ -19,6 +19,7 @@ interface Firm {
   lastEdit: string | null;
   ready: boolean;
   lastScore: { total: number; rank: number } | null;
+  plan?: { targets: string[]; positioning: string } | null;
 }
 interface Overview {
   game: {
@@ -30,7 +31,7 @@ interface Overview {
   rounds: { round: number; processed_at: string; run_count: number }[];
   flagged: { firm: string; title: string; detail: string }[];
   demo: { password: string; students: { name: string; email: string; team: string | null }[] } | null;
-  showcase?: { guestEmail: string; guestPassword: string; built: number } | null;
+  showcase?: { guestEmail: string; guestPassword: string; built: number; stopAfter?: number } | null;
   guest?: boolean;
 }
 
@@ -83,7 +84,7 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
         <div className="stat"><div className="k">Students joined</div><div className="v">{students.reduce((a, f) => a + f.members.length, 0)}</div></div>
       </div>
 
-      {o.guest && <div className="notice info"><b>Read-only guest view.</b> Look at anything: the class results below, <b>Decisions &amp; results</b> for each team, <b>Grade creative work</b>, and <b>View as student</b> to see a team&apos;s own screens. Buttons that would change something only show a message that guests can&apos;t make changes.</div>}
+      {o.guest && <GuestStart firms={students} finished={o.game.current_round > ROUNDS.final} />}
       {o.showcase && <ShowcasePanel id={id} sc={o.showcase} />}
       {o.demo && <DemoPanel id={id} demo={o.demo} showcase={!!o.showcase} />}
 
@@ -299,7 +300,7 @@ function toLocalInput(iso: string, tz: string) {
 
 function ShowcasePanel({ id, sc }: { id: string; sc: NonNullable<Overview["showcase"]> }) {
   const [busy, setBusy] = useState<string | null>(null);
-  const total = ROUNDS.final + 1;
+  const total = sc.stopAfter ?? ROUNDS.final + 1;
   async function finish() {
     try {
       let done = false;
@@ -495,4 +496,38 @@ function Spark({ values }: { values: (number | null)[] }) {
   const w = 90, h = 22, min = Math.min(...v) - 2, max = Math.max(...v) + 2;
   const pts = v.map((x, i) => `${(i / (v.length - 1)) * w},${h - ((x - min) / (max - min || 1)) * h}`).join(" ");
   return <svg width={w} height={h} aria-hidden><polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth={2} /></svg>;
+}
+
+/** Start here panel for the read-only showcase guest (colleagues reviewing the sim). */
+function GuestStart({ firms, finished }: { firms: Firm[]; finished: boolean }) {
+  const seg = (id: string) => SEGMENTS.find((x) => x.id === id)?.name ?? id;
+  return (
+    <div className="panel" style={{ borderLeft: "4px solid var(--accent)" }}>
+      <h2 style={{ marginTop: 0 }}>Start here</h2>
+      <p className="small" style={{ marginTop: 0 }}>
+        {finished
+          ? <>This is a finished class: {firms.length} student teams and 4 computer-run rivals played every round, Practice to Final. You&apos;re a read-only guest, so nothing you click changes anything. Everything on a team&apos;s screens was entered by that team.</>
+          : <>This class is in progress: the same {firms.length} teams have played the Practice round and Round 1, and Round 2 is open with this week&apos;s inputs (prices, promotion, forecast, production and goals) blank. In <b>View as student</b> you can type in any field to try it. Nothing is saved and no round will run.</>}
+      </p>
+      <ol className="small" style={{ paddingLeft: 20 }}>
+        <li><b>Class results</b> (below): pick a round to see every firm&apos;s scorecard.</li>
+        <li><b>Decisions &amp; results</b> next to a team: every decision that team made in a round, on one page, with its results.</li>
+        <li><b>View as student</b> next to a team: the screens students actually use. A note at the top of each screen says what students decide there and what this team chose.</li>
+      </ol>
+      {firms.some((f) => f.plan) && (
+        <table className="small">
+          <thead><tr><th>Team</th><th>Target segments</th><th>Positioning</th></tr></thead>
+          <tbody>
+            {firms.map((f) => (
+              <tr key={f.id}>
+                <td><b>{f.name}</b></td>
+                <td>{f.plan?.targets.map(seg).join(", ") || <span className="muted">none</span>}</td>
+                <td>{f.plan?.positioning || <span className="muted">(blank)</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 }

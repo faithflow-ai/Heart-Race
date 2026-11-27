@@ -7,5 +7,5 @@ export const maxDuration = 60;
 /** Create a showcase class (no rounds played yet; the page then plays them one at a time). */
 export const POST = handle(async () => {
   const u = await requireInstructor();
-  return { game: await createShowcase(u) };
+  return await createShowcase(u);
 });

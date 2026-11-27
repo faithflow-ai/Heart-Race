@@ -7,6 +7,10 @@ export interface TeamData {
   user: { id: string; name: string; email: string };
   /** true when an instructor is looking at this team's screens (read-only). */
   viewAs: boolean;
+  /** true for the read-only showcase guest login (colleagues). */
+  guest: boolean;
+  /** Guest in the class in progress: edits stay in the browser and are never saved. */
+  tryIt: boolean;
   game: { id: string; name: string; status: string; round: number; deadline: string | null; timezone: string };
   firm: { id: string; name: string };
   members: { name: string; email: string }[];
@@ -57,10 +61,12 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const pending = useRef<Op[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlight = useRef(false);
+  const tryIt = useRef(false);
 
   const reload = useCallback(async () => {
     try {
       const t = await api<TeamData>("/api/team");
+      tryIt.current = !!t.tryIt;
       if (pending.current.length) t.decision = pending.current.reduce(applyLocal, t.decision);
       setTeam(t);
       setError("");
@@ -98,6 +104,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const queue = useCallback(
     (op: Op) => {
       setTeam((t) => (t ? { ...t, decision: applyLocal(t.decision, op) } : t));
+      if (tryIt.current) return; // Try-it mode: keep the edit on screen only.
       // Coalesce repeated edits to the same field.
       if (!op.op || op.op === "set") pending.current = pending.current.filter((p) => !(p.path === op.path && (!p.op || p.op === "set")));
       pending.current.push(op);
@@ -115,7 +122,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   // Pick up teammates' edits every 20 seconds while idle.
   useEffect(() => {
     const id = setInterval(() => {
-      if (!pending.current.length && !inFlight.current) reload();
+      if (!pending.current.length && !inFlight.current && !tryIt.current) reload();
     }, 20_000);
     return () => clearInterval(id);
   }, [reload]);

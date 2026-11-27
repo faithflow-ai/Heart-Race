@@ -98,12 +98,12 @@ function Decide() {
   const round = t.game.round;
   const tab = sp.get("tab") ?? "strategy";
   const current = TABS.find((x) => x.id === tab) ?? TABS[0];
-  if (round > ROUNDS.final) return <div className="panel">The game is over.</div>;
+  const over = round > ROUNDS.final;
 
   return (
     <>
       <div className="row">
-        <h1 style={{ margin: 0 }}>Decisions: {ROUNDS.names[round]}</h1>
+        <h1 style={{ margin: 0 }}>Decisions: {ROUNDS.names[Math.min(round, ROUNDS.final)]}</h1>
         <span className="spacer" />
         <SaveState />
       </div>
@@ -115,13 +115,14 @@ function Decide() {
           </a>
         ))}
       </div>
+      {over && <div className="notice info">The game is over. These are the team&apos;s Final round decisions, read-only. Earlier rounds are on <a href="/play/history">Past decisions</a>.</div>}
       {round < current.unlock ? (
         <div className="panel">
           <p>🔒 <b>This screen opens in {ROUNDS.names[current.unlock]}.</b> You can read what it covers below and plan ahead.</p>
           <Learn id={current.id} />
         </div>
       ) : (
-        <fieldset className="plain" disabled={t.viewAs}>
+        <fieldset className="plain" disabled={(t.viewAs && !t.tryIt) || over}>
           {current.id === "strategy" && <Strategy />}
           {current.id === "products" && <Products />}
           {current.id === "markets" && <Markets />}
@@ -204,10 +205,13 @@ function Strategy() {
             <>
               <p className="small muted">{LEARN.goals}</p>
               <div className="grid2">
-                <div>
-                  <label>Share of target segments (%)</label>
-                  <NumIn value={g.share} onChange={(v) => set("goals.share", v)} />
-                </div>
+                {s.targetSegments.length === 0 && <p className="small muted" style={{ gridColumn: "1 / -1" }}>Pick your target segments above to set a share goal for each one.</p>}
+                {s.targetSegments.map((id) => (
+                  <div key={id}>
+                    <label>Share of {SEGMENTS.find((x) => x.id === id)?.name} (%)</label>
+                    <NumIn value={g.segmentShare?.[id] ?? null} onChange={(v) => set(`goals.segmentShare.${id}`, v)} />
+                  </div>
+                ))}
                 <div>
                   <label>Revenue ($)</label>
                   <NumIn value={g.revenue} step={10000} onChange={(v) => set("goals.revenue", v)} />
@@ -880,11 +884,12 @@ function Checklist() {
     }
     if (t.budget.remaining < 0) add("Marketing spending is over budget (it will be scaled down at the deadline)", "pricing");
   }
-  if (round >= UNLOCKS.goals && Object.values(d.goals).some((v) => v === null)) add("Some numeric goals are blank", "strategy");
+  if (round >= UNLOCKS.goals && ([d.goals.revenue, d.goals.margin, d.goals.awareness, d.goals.satisfaction].some((v) => v === null) || d.strategy.targetSegments.some((s) => d.goals.segmentShare?.[s] == null)))
+    add("Some numeric goals are blank", "strategy");
   if (!d.reflection.trim()) add("Round reflection is empty", "review");
   return (
     <div className="panel">
-      <h3 style={{ marginTop: 0 }}>Checklist for {ROUNDS.names[round]}</h3>
+      <h3 style={{ marginTop: 0 }}>Checklist for {ROUNDS.names[Math.min(round, ROUNDS.final)]}</h3>
       {!items.length ? (
         <div className="notice good">✓ Everything is filled in. You can keep editing until the deadline.</div>
       ) : (

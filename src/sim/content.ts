@@ -15,7 +15,7 @@ export const LEARN: Record<string, string> = {
   strategy:
     "Segmentation, targeting and positioning (STP): pick the buyer groups you will serve and say why you are the better choice for them. The Market score counts your share only in the segments you declare here, weighted by their size, so choose deliberately.",
   goals:
-    "Numeric goals make a plan testable. Each round the scorecard compares what you said you'd achieve with what happened. Being realistic is rewarded: a wildly optimistic goal costs you points.",
+    "Numeric goals make a plan testable. Each round the scorecard compares what you said you'd achieve with what happened. Set a share goal for each target segment: each one counts equally, and together they count as one goal. Being realistic is rewarded: a wildly optimistic goal costs you points.",
   products:
     "You don't spend an R&D budget. You write a brief for engineering: which segment, which features. Engineering quotes a unit cost, a one-time development fee (paid from company capital) and a lead time of 1 round. Once you accept a quote, the design is locked, because hardware takes a long time to change. Segments aren't the same as tiers: work out which tier serves which segment, and price your tiers so they don't steal sales from each other.",
   markets:

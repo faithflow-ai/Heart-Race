@@ -108,6 +108,25 @@
   - **Needs a Learn lesson** on creative briefs and campaigns (what a brief contains, message and tone by segment, social, search and video ad formats, landing pages), plus a short assignment sheet for each milestone and the rubric. The lesson will be added to the drafts later.
 
 
+## Nov 27: showcase guest notes and per-segment goals (Victor said go Nov 27; built in PR 6, waiting for merge)
+
+- [P1] Showcase – Guest banner in View as student: a strip on every student screen that says "You're viewing [Team] as a guest. Everything here was entered by this team's students. Read only." with a link back to the class screen. (Today it's hard to tell that these are the team's own choices.)
+- [P1] Showcase – "About this screen" side note (guest only, can be collapsed): on each Decisions screen and on Research, Creative and Results, 2 or 3 plain lines on what students decide there, plus a summary of this team's choices that round. Example on Strategy & goals: "CareBand targets Older Adults & Caregivers and Everyday Wellness in North America and Europe, posture: niche. Goals: 18% share, $4.2M revenue." Built from the team's saved decisions, so it stays correct for any round.
+- [P2] Showcase – Start here panel on the guest's class screen: 3 steps (look at Class results, open Decisions & results for one team, then View as student) and each team's target segments and positioning. (Built without a link to the tour document, since the app doesn't store that link.)
+- [P1] Showcase – Found while building: in a finished class, View as student showed "The game is over" on the Decisions tab. It now shows the team's Final round decisions, read-only, with a link to Past decisions for earlier rounds.
+- [P1] Goals – Separate market share goal for each target segment: when a team targets more than one segment, the Goals section shows one share goal per target segment instead of a single number, and the Results goal table shows goal vs. actual for each segment.
+  - Scoring change: today goal accuracy averages how close the team came on each goal it set (share, revenue, margin, awareness, satisfaction), and that is half of the 10-point Goal and forecast accuracy score (forecast accuracy is the other half). With the change, the share goal's closeness becomes the average across the team's segment goals, so share still counts as one goal. A team with 3 segments isn't weighted more heavily than a team with 1, and a team can't hide a miss in one segment behind a hit in another.
+  - Decided (Victor, Nov 27): each segment goal is weighted equally, not by segment size.
+  - The Market score itself doesn't change (it's already share across target segments, weighted by size); Results would also show share by segment next to the goals.
+
+## Nov 27: "class in progress" for colleagues (Victor said go Nov 27; built in PR 6, waiting for merge)
+
+- [P1] Showcase – Second guest class, "in progress": the same 4 teams, with the Practice round and Round 1 already played and Round 2 open. Round 2's inputs start blank (no carry-forward fill), so colleagues see exactly what students face each week. Uses the same guest login as the finished showcase, so colleagues see both classes after signing in.
+  - **Try-it mode:** the guest can type in every field and click through the screens (send a brief, accept a quote, enter prices and promotion) to feel the workload. Nothing is saved or processed: a banner says "Practice mode: you can type here to try it, but nothing is saved and no round will run," and the entries clear when the page reloads.
+  - Round 1 results, research and the change log are there to read, so colleagues can see what students have to work from.
+  - Claude's recommendation: one in-progress class plus the finished showcase is enough. A third class would add setup without showing anything new.
+  - As built: Create showcase class now makes both classes. Products, regions, channels and strategy carry over into Round 2; the weekly inputs (prices, promotion, forecast, production, goals) start at zero or blank. Deleting the finished class also deletes the class in progress.
+
 ## Later batch (queued Nov 23, not in the current build)
 
 - [P2] Instructor – Unusual activity flags: the class screen flags agent-like patterns for each team and says why each one was flagged, with an optional email to the instructor once email sending is set up. Examples: every input entered within seconds, only one teammate ever active, rapid bursts of edits at identical speed, edits at odd hours, no round reflection. Wording must make clear a flag is a prompt to look closer, not proof that a student used an AI agent

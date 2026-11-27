@@ -59,7 +59,7 @@ export function emptyDecision(): FirmDecision {
   for (const r of REGIONS) regions[r.id] = { enter: false, entryMode: "distributor", channels: [] };
   return {
     strategy: { companyName: "", mission: "", positioning: "", norms: "", posture: "", targetSegments: [], targetRegions: [] },
-    goals: { share: null, revenue: null, margin: null, awareness: null, satisfaction: null },
+    goals: { share: null, segmentShare: {}, revenue: null, margin: null, awareness: null, satisfaction: null },
     research: [],
     products: [],
     regions,
@@ -78,7 +78,7 @@ export function normalizeDecision(d: Partial<FirmDecision> | null | undefined): 
     ...base,
     ...d,
     strategy: { ...base.strategy, ...(d.strategy ?? {}) },
-    goals: { ...base.goals, ...(d.goals ?? {}) },
+    goals: { ...base.goals, ...(d.goals ?? {}), segmentShare: { ...(d.goals?.segmentShare ?? {}) } },
     regions: { ...base.regions },
     plan: {},
     products: (d.products ?? []).map((p, i) => {
