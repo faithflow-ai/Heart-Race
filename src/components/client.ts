@@ -27,6 +27,24 @@ export function fmtTime(d: string | null | undefined, tz?: string) {
   return new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(d));
 }
 
+/** Short day and time, like "Sun 9:42 PM". */
+export function fmtShort(d: string | null | undefined, tz?: string) {
+  if (!d) return "";
+  return new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric", minute: "2-digit" }).format(new Date(d));
+}
+
+/** Countdown like "2 days 4 hrs left". */
+export function countdown(d: string | null | undefined) {
+  if (!d) return "";
+  const ms = new Date(d).getTime() - Date.now();
+  if (ms <= 0) return "Deadline passed";
+  const m = Math.floor(ms / 6e4);
+  const days = Math.floor(m / 1440), hrs = Math.floor((m % 1440) / 60), mins = m % 60;
+  if (days) return `${days} day${days === 1 ? "" : "s"} ${hrs} hr${hrs === 1 ? "" : "s"} left`;
+  if (hrs) return `${hrs} hr${hrs === 1 ? "" : "s"} ${mins} min left`;
+  return `${Math.max(1, mins)} min left`;
+}
+
 export function timeLeft(d: string | null | undefined) {
   if (!d) return "";
   const ms = new Date(d).getTime() - Date.now();

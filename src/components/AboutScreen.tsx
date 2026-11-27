@@ -30,6 +30,7 @@ const WHAT: Record<string, string> = {
   history: "A readable record of everything the team decided, round by round. The quickest way to see how a team's plan changed.",
   learn: "One short lesson per round on the principles behind that round's decisions. Instructor notes show only to instructors and guests.",
   log: "Who on the team changed what, and when. Useful for peer evaluation.",
+  start: "Every student's first stop: the scenario briefing, the team charter, how a round works, how scoring works and a 5-question check on the rules. Students land here until they finish it; it then stays as the rules and FAQ reference.",
   help: "The scenario briefing students read first: the company, the market and how scoring works.",
 };
 

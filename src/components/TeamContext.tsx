@@ -24,6 +24,10 @@ export interface TeamData {
   inventory: Record<string, Record<string, number>>;
   processed: { round: number; processed_at: string }[];
   research: { round: number; study: string }[];
+  /** Latest edit on each decision step this round. */
+  lastEdits?: Record<string, { name: string; at: string }>;
+  /** Start here steps this student has finished; null when an instructor or guest views the team. */
+  onboarding?: Record<string, boolean> | null;
 }
 
 type Op = { path: string; op?: "set" | "push" | "remove"; value?: unknown };

@@ -109,3 +109,6 @@ create table if not exists creative_submissions (
   graded_at timestamptz,
   primary key (firm_id, milestone)
 );
+
+-- Start here progress for each student in a class (Nov 2026). Additive: existing rows default to nothing done.
+alter table members add column if not exists onboarding jsonb not null default '{}'::jsonb;

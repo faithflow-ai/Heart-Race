@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, fmtTime, money, timeLeft } from "@/components/client";
 import { useTeam } from "@/components/TeamContext";
+import { stepStatus } from "@/components/checklist";
 import { ROUNDS } from "@/sim/config";
 import { ROUND_FOCUS } from "@/sim/content";
 import type { FirmReport, ScoreBreakdown } from "@/sim/types";
@@ -25,6 +26,8 @@ export default function TeamHome() {
     );
 
   const focus = ROUND_FOCUS[t.game.round];
+  const steps = stepStatus(t);
+  const nextStep = steps.find((x) => x.state === "attention");
   const d = t.decision;
   return (
     <>
@@ -69,12 +72,22 @@ export default function TeamHome() {
 
       <div className="grid2">
         <div className="panel">
-          <h2 style={{ marginTop: 0 }}>This round: {focus.title}</h2>
-          <p>{focus.text}</p>
+          <h2 style={{ marginTop: 0 }}>Due this round</h2>
+          <p className="small"><b>{focus.title}.</b> {focus.text}</p>
+          <ul className="due">
+            {steps.map((x, i) => (
+              <li key={x.id}>
+                <span className={`dot ${x.state}`}>{x.state === "done" ? "✓" : x.state === "attention" ? "!" : ""}</span>
+                <a href={`/play/decide?tab=${x.id}`}>{i + 1}. {x.label}</a>
+                <span className="spacer" />
+                <span className="small muted">{x.locked ? `Opens in ${x.opens}` : x.state === "attention" ? `${x.issues} to check` : "Done"}</span>
+              </li>
+            ))}
+          </ul>
           <p>
-            <a className="btn primary" href="/play/decide">Start this round&apos;s decisions here →</a>
+            <a className="btn primary" href={`/play/decide${nextStep ? `?tab=${nextStep.id}` : ""}`}>{nextStep ? `Continue: ${nextStep.label} →` : "Review decisions →"}</a>
           </p>
-          <p className="small muted">Changes save automatically. Whatever is saved at the deadline is submitted. If you change nothing, last round's decisions carry forward.</p>
+          <p className="small muted">Changes save automatically. Whatever is saved at the deadline is used. If you change nothing, last round&apos;s decisions carry forward.</p>
         </div>
         <div className="panel">
           <h2 style={{ marginTop: 0 }}>Last round</h2>
@@ -95,7 +108,7 @@ export default function TeamHome() {
                   <b>{c.title}.</b> {c.detail} <i>Fix: {c.fix}</i>
                 </div>
               ))}
-              <a href={`/play/results?round=${last.round}`}>Full results →</a>
+              <a href={`/play/results?round=${last.round}`}>See full results →</a>
             </>
           )}
         </div>

@@ -127,7 +127,9 @@
   - Claude's recommendation: one in-progress class plus the finished showcase is enough. A third class would add setup without showing anything new.
   - As built: Create showcase class now makes both classes. Products, regions, channels and strategy carry over into Round 2; the weekly inputs (prices, promotion, forecast, production, goals) start at zero or blank. Deleting the finished class also deletes the class in progress.
 
-## Nov 27: Branding and look (Victor picked Pulse Nov 27; waiting for go)
+## Nov 27: Branding and look (Victor picked Pulse and said go Nov 27)
+
+**PR 7 (built Nov 27):** Pulse look (colors, fonts, logo, favicon, score bars no longer red), new menu with More, round tracker on every team screen, Start here (replaces How it works; first-login landing; 5 steps with a quick check), Decisions step list with money rail, bottom bar and Last edited by, Home "Due this round" list, Learn boxes stay closed once read. Everything else below is for the next PR.
 
 Look book with 3 brand directions and mockups: https://claude.ai/artifact/Jfvo5wV3orCMr1xFTKQRAk. Claude recommends A (Pulse: navy, pulse red, mint; heartbeat-line logo; Space Grotesk + Inter), plus "A Vibe Electronics simulation" under the logo and board meetings on the round tracker (from C).
 

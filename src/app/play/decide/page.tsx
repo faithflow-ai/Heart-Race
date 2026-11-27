@@ -1,7 +1,8 @@
 "use client";
 import { Fragment, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { api, money, num } from "@/components/client";
+import { api, fmtShort, money, num } from "@/components/client";
+import { STEPS, activeRegions, checklistItems, sellable, stepStatus } from "@/components/checklist";
 import { SaveState, useTeam, type TeamData } from "@/components/TeamContext";
 import {
   CHANNELS,
@@ -32,15 +33,6 @@ import { LEARN } from "@/sim/content";
 import { newProduct, quote, supportedClaims } from "@/sim/product";
 import type { FirmDecision, ProductSpec } from "@/sim/types";
 
-const TABS = [
-  { id: "strategy", label: "Strategy & goals", unlock: UNLOCKS.strategy },
-  { id: "products", label: "Products", unlock: UNLOCKS.products },
-  { id: "markets", label: "Markets & channels", unlock: UNLOCKS.markets },
-  { id: "pricing", label: "Price & promotion", unlock: UNLOCKS.pricing },
-  { id: "production", label: "Forecast & production", unlock: UNLOCKS.production },
-  { id: "review", label: "Review & checklist", unlock: 0 },
-];
-
 // Region channels (public): mirrors the hidden region settings' channel lists.
 const REGION_CHANNELS: Record<RegionId, ChannelId[]> = {
   na: ["online", "marketplace", "mass", "electronics", "pharmacy", "specialty", "carrier", "bizdist"],
@@ -50,8 +42,19 @@ const REGION_CHANNELS: Record<RegionId, ChannelId[]> = {
 };
 
 function Learn({ id }: { id: string }) {
+  // Open the first time a student sees it; closed on later visits (remembered in this browser).
+  const [open] = useState(() => {
+    try {
+      const k = `hr_learn_${id}`;
+      const seen = localStorage.getItem(k);
+      localStorage.setItem(k, "1");
+      return !seen;
+    } catch {
+      return true;
+    }
+  });
   return (
-    <details className="learn" open>
+    <details className="learn" open={open}>
       <summary>Learn</summary>
       <p style={{ margin: "6px 0 0" }}>{LEARN[id]}</p>
     </details>
@@ -71,18 +74,6 @@ function NumIn({ value, onChange, step = 1, min = 0, disabled }: { value: number
   );
 }
 
-function sellable(t: TeamData) {
-  const round = t.game.round;
-  const committed = new Map(t.committed.map((c) => [c.id, c]));
-  return t.decision.products.filter((p) => {
-    const c = committed.get(p.id);
-    return c && !c.retired && !p.retire && c.launchRound <= round;
-  });
-}
-function activeRegions(t: TeamData) {
-  return REGIONS.filter((r) => t.regionsEntered[r.id] || t.decision.regions[r.id].enter);
-}
-
 export default function DecidePage() {
   return (
     <Suspense>
@@ -96,42 +87,84 @@ function Decide() {
   const sp = useSearchParams();
   const t = team!;
   const round = t.game.round;
-  const tab = sp.get("tab") ?? "strategy";
-  const current = TABS.find((x) => x.id === tab) ?? TABS[0];
   const over = round > ROUNDS.final;
+  const steps = stepStatus(t);
+  // Step 1 by default; from Round 2 on, open on the first step that needs attention.
+  const firstOpen = round >= 2 && !t.viewAs ? steps.find((x) => x.state === "attention" && x.id !== "review") : undefined;
+  const tab = sp.get("tab") ?? firstOpen?.id ?? "strategy";
+  const idx = Math.max(0, STEPS.findIndex((x) => x.id === tab));
+  const current = steps[idx];
+  const next = steps[idx + 1];
+  const prev = steps[idx - 1];
+  const edit = t.lastEdits?.[current.id];
 
   return (
-    <>
-      <div className="row">
-        <h1 style={{ margin: 0 }}>Decisions: {ROUNDS.names[Math.min(round, ROUNDS.final)]}</h1>
-        <span className="spacer" />
-        <SaveState />
-      </div>
-      <div className="tabs" style={{ marginTop: 12 }}>
-        {TABS.map((x) => (
-          <a key={x.id} href={`/play/decide?tab=${x.id}`} className={`${x.id === current.id ? "active" : ""} ${round < x.unlock ? "locked" : ""}`}>
-            {x.label}
-            {round < x.unlock ? ` 🔒 Opens in ${ROUNDS.names[x.unlock]}` : ""}
+    <div className="decide">
+      <aside className="steplist" aria-label="Decision steps">
+        <div className="steplist-head">{ROUNDS.names[Math.min(round, ROUNDS.final)]} decisions</div>
+        {steps.map((x, i) => (
+          <a key={x.id} href={`/play/decide?tab=${x.id}`} className={`step ${x.id === current.id ? "cur" : ""} ${x.state}`} aria-current={x.id === current.id ? "step" : undefined}>
+            <span className={`dot ${x.state}`}>{x.state === "done" ? "✓" : x.state === "attention" ? "!" : x.locked ? "" : i + 1}</span>
+            <span className="step-label">
+              {i + 1}. {x.label}
+              {x.locked && <small>Opens in {x.opens}</small>}
+              {x.state === "attention" && <small>{x.issues} to check</small>}
+            </span>
           </a>
         ))}
-      </div>
-      {over && <div className="notice info">The game is over. These are the team&apos;s Final round decisions, read-only. Earlier rounds are on <a href="/play/history">Past decisions</a>.</div>}
-      {round < current.unlock ? (
-        <div className="panel">
-          <p>🔒 <b>This screen opens in {ROUNDS.names[current.unlock]}.</b> You can read what it covers below and plan ahead.</p>
-          <Learn id={current.id} />
+      </aside>
+      <section className="decide-main">
+        <div className="row" style={{ marginBottom: 12 }}>
+          <h1 style={{ margin: 0 }}>{idx + 1}. {current.label}</h1>
         </div>
-      ) : (
-        <fieldset className="plain" disabled={(t.viewAs && !t.tryIt) || over}>
-          {current.id === "strategy" && <Strategy />}
-          {current.id === "products" && <Products />}
-          {current.id === "markets" && <Markets />}
-          {current.id === "pricing" && <Pricing />}
-          {current.id === "production" && <Production />}
-          {current.id === "review" && <Review />}
-        </fieldset>
-      )}
-    </>
+        {over && <div className="notice info">The game is over. These are the team&apos;s Final round decisions, read-only. Earlier rounds are on <a href="/play/history">Past decisions</a>.</div>}
+        {current.locked ? (
+          <div className="panel">
+            <p><b>This step opens in {current.opens}.</b> You can read what it covers below and plan ahead.</p>
+            <Learn id={current.id} />
+          </div>
+        ) : (
+          <fieldset className="plain" disabled={(t.viewAs && !t.tryIt) || over}>
+            {current.id === "strategy" && <Strategy />}
+            {current.id === "products" && <Products />}
+            {current.id === "markets" && <Markets />}
+            {current.id === "pricing" && <Pricing />}
+            {current.id === "production" && <Production />}
+            {current.id === "review" && <Review />}
+          </fieldset>
+        )}
+      </section>
+      <aside className="rail" aria-label="Money left">
+        <div className="rail-block">
+          <div className="k">Marketing budget left</div>
+          {round === 0 ? (
+            <div className="v small-v">Starts in Round 1</div>
+          ) : (
+            <>
+              <div className={`v ${t.budget.remaining < 0 ? "neg" : ""}`}>{money(t.budget.remaining, true)}</div>
+              <div className="meter"><i style={{ width: `${Math.max(0, Math.min(100, t.budget.available > 0 ? ((t.budget.available - Math.max(0, t.budget.remaining)) / t.budget.available) * 100 : 0))}%` }} /></div>
+              <div className="s">{money(t.budget.promotion + t.budget.research, true)} of {money(t.budget.available, true)} planned</div>
+            </>
+          )}
+        </div>
+        <div className="rail-block">
+          <div className="k">Company capital</div>
+          <div className="v">{money(t.budget.capital, true)}</div>
+          <div className="s">For engineering, production and entry</div>
+        </div>
+        <div className="rail-block">
+          <div className="k">Team status</div>
+          <div>{t.decision.ready ? <span className="badge good">Marked ready</span> : <span className="badge">Not marked ready</span>}</div>
+        </div>
+      </aside>
+      <div className="stepbar">
+        <SaveState />
+        {edit && <span className="muted">Last edited by {edit.name}, {fmtShort(edit.at, t.game.timezone)}</span>}
+        <span className="spacer" />
+        {prev && <a className="btn ghost" href={`/play/decide?tab=${prev.id}`}>← {prev.label}</a>}
+        {next ? <a className="btn primary" href={`/play/decide?tab=${next.id}`}>Next: {next.label} →</a> : <a className="btn primary" href="/play">Back to Home</a>}
+      </div>
+    </div>
   );
 }
 
@@ -849,44 +882,8 @@ function ProFormaPanel() {
 function Checklist() {
   const { team } = useTeam();
   const t = team!;
-  const d = t.decision;
   const round = t.game.round;
-  const committed = new Map(t.committed.map((c) => [c.id, c]));
-  const items: { text: string; tab: string }[] = [];
-  const add = (text: string, tab: string) => items.push({ text, tab });
-  if (!d.strategy.companyName.trim()) add("Company not named", "strategy");
-  if (!d.strategy.mission.trim()) add("Mission is blank", "strategy");
-  if (!d.strategy.norms.trim()) add("Team charter is blank", "strategy");
-  if (!d.strategy.targetSegments.length) add("No target segments chosen", "strategy");
-  if (!d.strategy.targetRegions.length) add("No target regions chosen", "strategy");
-  const drafts = d.products.filter((p) => !committed.has(p.id) && !p.retire);
-  if (!d.products.length && round < PRODUCT_RULES.thirdProductBriefRound + 1) add("No product briefs yet: products briefed this round are ready to sell next round", "products");
-  for (const p of drafts) {
-    if (!p.briefSent && !p.commission) add(`${p.name} is still a draft (not sent to engineering, so it won't be ready next round)`, "products");
-    else if (!p.commission) add(`${p.name} has a quote from engineering that hasn't been accepted (it won't be ready next round)`, "products");
-  }
-  if (round >= UNLOCKS.markets) {
-    const regions = activeRegions(t);
-    if (!regions.length) add("No region entered: you can't sell anywhere yet", "markets");
-    for (const r of regions) if (!d.regions[r.id].channels.length) add(`No channels chosen in ${r.name}`, "markets");
-    const prods = sellable(t);
-    for (const p of prods)
-      for (const r of regions) {
-        const pl = d.plan[p.id]?.[r.id];
-        if (!pl?.price) add(`No price for ${p.name} in ${r.name}`, "pricing");
-        if (!pl?.forecast) add(`No sales forecast for ${p.name} in ${r.name}`, "production");
-        if (!pl?.production && !(t.inventory[p.id]?.[r.id] ?? 0)) add(`No production planned for ${p.name} in ${r.name}`, "production");
-      }
-    if (prods.length && regions.length && !t.budget.promotion) add("No promotion planned", "pricing");
-    for (const p of prods) {
-      if (!p.campaign?.segment || !p.campaign?.tone) add(`Campaign for ${p.name} has no target segment or tone`, "pricing");
-      else if (!p.campaign.message.trim()) add(`Campaign for ${p.name} has no main message`, "pricing");
-    }
-    if (t.budget.remaining < 0) add("Marketing spending is over budget (it will be scaled down at the deadline)", "pricing");
-  }
-  if (round >= UNLOCKS.goals && ([d.goals.revenue, d.goals.margin, d.goals.awareness, d.goals.satisfaction].some((v) => v === null) || d.strategy.targetSegments.some((s) => d.goals.segmentShare?.[s] == null)))
-    add("Some numeric goals are blank", "strategy");
-  if (!d.reflection.trim()) add("Round reflection is empty", "review");
+  const items = checklistItems(t);
   return (
     <div className="panel">
       <h3 style={{ marginTop: 0 }}>Checklist for {ROUNDS.names[Math.min(round, ROUNDS.final)]}</h3>
