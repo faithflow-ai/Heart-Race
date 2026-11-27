@@ -314,6 +314,24 @@ function ShowcasePanel({ id, sc }: { id: string; sc: NonNullable<Overview["showc
       setBusy((e as Error).message);
     }
   }
+  async function rebuild() {
+    if (!window.confirm("Rebuild both showcase classes (the finished class and the class in progress) on the simulation's current rules?\n\nEvery round is replayed from the Practice round. The classes, teams and guest login stay the same. It takes a few minutes; keep this page open.")) return;
+    try {
+      setBusy("Starting over…");
+      const r = await api(`/api/games/${id}/showcase/reset`, { body: {} });
+      for (const gid of r.ids as string[]) {
+        let done = false;
+        while (!done) {
+          const st = await api(`/api/games/${gid}/showcase`, { body: {} });
+          setBusy(`${gid === r.ids[0] ? "Finished class" : "Class in progress"}: ${st.built} of ${st.total} rounds played…`);
+          done = st.done;
+        }
+      }
+      window.location.reload();
+    } catch (e) {
+      setBusy(`${(e as Error).message} Click Continue building on each showcase class to finish.`);
+    }
+  }
   const site = typeof window !== "undefined" ? window.location.origin : "";
   return (
     <div className="panel" style={{ borderColor: "var(--accent)" }}>
@@ -322,6 +340,12 @@ function ShowcasePanel({ id, sc }: { id: string; sc: NonNullable<Overview["showc
         <div className="notice warn">
           {sc.built} of {total} rounds are played. <button disabled={!!busy} onClick={finish}>{busy ?? "Continue building"}</button>
         </div>
+      )}
+      {sc.built >= total && (
+        <p className="small">
+          <button disabled={!!busy} onClick={rebuild}>{busy ?? "Rebuild on current rules"}</button>{" "}
+          <span className="muted">Replays both showcase classes after the simulation's rules change. Same teams, same guest login.</span>
+        </p>
       )}
       <p className="small">Give colleagues these details. The guest login sees only this class, and can&apos;t change anything.</p>
       <table style={{ maxWidth: 640 }}>
