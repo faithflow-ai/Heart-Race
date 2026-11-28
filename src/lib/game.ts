@@ -5,6 +5,7 @@ import { proForma } from "@/sim/proforma";
 import { generateStudy } from "@/sim/research";
 import { defaultAiLevel, runRound } from "@/sim/run";
 import type { FirmDecision, FirmMeta, FirmState, RoundResult } from "@/sim/types";
+import { aiDecide } from "@/sim/ai";
 import { creativeBoosts } from "./creative";
 import { HttpError, type User } from "./auth";
 import { newId, one, q } from "./db";
@@ -392,6 +393,11 @@ export async function projection(g: GameRow, firms: FirmRow[], latest: RoundResu
   const metas = firms.map((f) => firmMeta(f, round));
   const decisions: Record<string, FirmDecision | null> = {};
   for (const f of metas) decisions[f.id] = f.id === firmId ? draft : (latest?.state.firms[f.id]?.lastDecision ?? null);
+  // Round 1: nobody has sold yet, so "repeat last round" would mean an empty market. Fill in each rival with a
+  // typical launch plan from the AI rivals' logic (a different seed, so it isn't the AI's actual move).
+  if (round === 1 && latest)
+    for (const f of metas)
+      if (f.id !== firmId) decisions[f.id] = aiDecide({ ...f, isAi: true }, { round, seed: g.seed + 999, state: latest.state, prevResult: latest, firms: metas });
   const res = processRound({ round, seed: g.seed + 999, firms: metas, prevState: latest?.state ?? null, prevResult: latest, decisions, settings: settingsOf(g), creativeBoost });
   const rep = res.reports[firmId];
   return { pnl: rep.pnl, supply: rep.supply, byProduct: rep.byProduct, notes: rep.notes, capacity: rep.capacity, budget: rep.budget };

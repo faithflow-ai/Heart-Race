@@ -850,7 +850,7 @@ function Review() {
             <span className="spacer" />
             <button onClick={project} disabled={busy}>{busy ? "Projecting…" : "Run projection"}</button>
           </div>
-          <p className="small muted">A different estimate from the projected profit and loss above: it runs the market model, assuming every rival repeats its last-round decisions. Real results will differ.</p>
+          <p className="small muted">A different estimate from the projected profit and loss above. The pro forma assumes you sell exactly your forecast; this runs the market model, where buyers choose among all firms. {t.game.round === 1 ? "Nobody has sold yet, so each rival is filled in with a typical launch plan." : "It assumes every rival repeats its last-round decisions."} Expect the two to differ: the gap is worth discussing. Real results will differ too.</p>
           {err && <div className="notice bad">{err}</div>}
           {proj && (
             <>
