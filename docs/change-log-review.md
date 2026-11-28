@@ -279,4 +279,4 @@ Report: /mnt/project-files/Heart Race/Test_Rerun_Practice_to_R2_Nov28.md
 
 - [P3] (Victor, Nov 28) The "to check" badge in the top bar also counts steps that are "Carried forward, review it", for example "2 to check, 4 to review". **Queued, build when Victor says go.**
 - [P3] (Victor, Nov 28) Start here stops taking over Home for a student who skipped it once Round 1 has closed: Home opens as usual, with a small "Finish Start here (2 of 5 done)" link. **Queued, build when Victor says go.**
-- [P3] (Victor, Nov 28) Clearance sales of old stock are shown on their own line and kept out of "Revenue" for the revenue goal and the revenue shown in results, so revenue reflects real sales. Profit and the scores are unchanged. **Queued, build when Victor says go.**
+- [P3] (Victor, Nov 28, revised) Clearance sales of old stock still count as revenue and toward the revenue goal, but are left out of the revenue used for next round's earned marketing top-up (10% of revenue) and the per-round spending limit (20% of revenue), so dumping stock at a loss doesn't earn a bigger marketing budget. Profit and the scores are unchanged. **Queued, build when Victor says go.**
