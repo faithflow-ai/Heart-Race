@@ -272,3 +272,11 @@ Findings: /mnt/project-files/Heart Race/Test_Practice_to_R2_Findings.md
 - [NOTE] (Victor, Nov 28; item 18) The Round 3 lesson line "Market events may begin to affect the market" is true once PR 12 (market events) merges, since the chip shortage is announced when Round 3 opens. No separate change.
 - [P2] (Victor, Nov 28; item 16) The server checks the same rules the screens do, so a request sent outside the screens (for example from browser developer tools) is refused: no changes to a product after its quote is accepted, no part combinations the screen blocks, no goals in Practice, and other locked steps stay locked. **Built in PR 13 (Nov 28).**
 - [P3] (Victor, Nov 28; item 17) Autosave saves each change on its own, so if one is refused (for example a teammate just accepted the quote) the others still save. The screen says which change did not save and why. **Built in PR 13 (Nov 28).**
+
+## Nov 28: Rerun findings (Victor said queue Nov 28; build when Victor says go)
+
+Report: /mnt/project-files/Heart Race/Test_Rerun_Practice_to_R2_Nov28.md
+
+- [P3] (Victor, Nov 28) The "to check" badge in the top bar also counts steps that are "Carried forward, review it", for example "2 to check, 4 to review". **Queued, build when Victor says go.**
+- [P3] (Victor, Nov 28) Start here stops taking over Home for a student who skipped it once Round 1 has closed: Home opens as usual, with a small "Finish Start here (2 of 5 done)" link. **Queued, build when Victor says go.**
+- [P3] (Victor, Nov 28) Clearance sales of old stock are shown on their own line and kept out of "Revenue" for the revenue goal and the revenue shown in results, so revenue reflects real sales. Profit and the scores are unchanged. **Queued, build when Victor says go.**
