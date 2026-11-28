@@ -19,12 +19,15 @@ import {
   type SegmentId,
   type SensorId,
   type ToneId,
+  studyFromRound,
 } from "./config";
 import { CHANNEL_PUSH, REGION_PROFILES, SEGMENT_PROFILES } from "./market";
 import { baseDemand, refPrice } from "./engine";
-import { emptyDecision, newProduct, normalizeDecision, quote, regionIds, supportedClaims } from "./product";
+import { emptyDecision, newProduct, normalizeDecision, quote, regionIds, supportedClaims, unitCostAt } from "./product";
 import { hashString, mulberry32 } from "./rng";
 import { fit } from "./fit";
+import { eventSchedule } from "./eventSchedule";
+import { eventUnitCost } from "./events";
 import type { FirmDecision, FirmMeta, GameState, ProductSpec, RoundResult, Tier } from "./types";
 
 const segIds = SEGMENTS.map((s) => s.id) as SegmentId[];
@@ -42,6 +45,8 @@ export interface AiContext {
   state: GameState | null; // state after last round
   prevResult: RoundResult | null;
   firms: FirmMeta[];
+  /** Class settings (for the market event schedule). */
+  settings?: { events?: Partial<Record<"chip" | "rival" | "tariff", number | null>> } | null;
 }
 
 export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
@@ -142,7 +147,7 @@ export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
   const roundsLeft = ROUNDS.final - ctx.round + 1;
   const spendShare = ctx.round <= 2 ? 0.8 : Math.min(0.9, 1.15 / roundsLeft);
   let promoBudget = pot * spendShare * (0.85 + 0.15 * skill);
-  if (skill >= 0.4 && ctx.round % 2 === 1) {
+  if (skill >= 0.4 && ctx.round % 2 === 1 && ctx.round >= studyFromRound("competitors")) {
     d.research = ["competitors"];
     promoBudget -= 35_000;
   }
@@ -170,6 +175,19 @@ export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
     if (sup && adapts) {
       if (sup.demand > 0 && sup.lost / sup.demand > 0.15) price *= 1.04;
       else if (sup.endInventory > Math.max(500, sup.sold * 0.35)) price *= 0.94;
+    }
+    // Market events: rivals pass on part of an industry-wide cost rise the round it starts.
+    // (Most of the extra cost per unit, in dollars; sharper rivals pass on more.)
+    const ps0 = fs?.products[p.id];
+    if (old?.price && old.price > 0 && ps0) {
+      const sched = eventSchedule(ctx.settings);
+      const startsNow = sched.tariff === ctx.round || (sched.chip === ctx.round && ps0.spec.chip !== "basic");
+      if (startsNow) {
+        const only = { chip: sched.chip === ctx.round, chipAlloc: {}, rival: null, tariff: sched.tariff === ctx.round };
+        const before = unitCostAt(ps0.quotedUnitCost, ps0.cumUnits, ctx.round, ps0.briefedRound);
+        const extra = eventUnitCost(before, ps0.quotedUnitCost, ps0.spec, only) - before;
+        price += extra * (0.8 + 0.4 * skill);
+      }
     }
     price = Math.max(29, Math.round(price) - 0.01);
     let forecast: number;

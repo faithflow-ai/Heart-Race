@@ -45,7 +45,7 @@ export const SCENARIO: Section[] = [
   },
   {
     "title": "The competition",
-    "body": "Every market has **8 firms**. Your classmates' teams are some of them. The rest are **AI rivals** run by the game, with names like Voltway, Pulsewise and Aurora Health.\n\nAI rivals follow the same rules and face the same buyers you do. They aren't all alike: some are premium brands, some are low-cost leaders and some copy whoever is winning. They start out beatable and get sharper as the game goes on, so a lead in Round 2 isn't safe in Round 6.\n\nFrom Round 3, **market events** may shake things up: a chip shortage, a privacy scare, a new competitor. They'll be announced in the round briefing."
+    "body": "Every market has **8 firms**. Your classmates' teams are some of them. The rest are **AI rivals** run by the game, with names like Voltway, Pulsewise and Aurora Health.\n\nAI rivals follow the same rules and face the same buyers you do. They aren't all alike: some are premium brands, some are low-cost leaders and some copy whoever is winning. They start out beatable and get sharper as the game goes on, so a lead in Round 2 isn't safe in Round 6.\n\nFrom Round 3, **market events** shake things up: a chip shortage, a new competitor and a tariff, each in a different round. Each one is announced as Market news on your Home page when its round opens (the chip shortage is flagged a round early)."
   },
   {
     "title": "How the game runs",

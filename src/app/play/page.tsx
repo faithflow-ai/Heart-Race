@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, fmtTime, money, timeLeft } from "@/components/client";
 import { useTeam } from "@/components/TeamContext";
-import { stepStatus } from "@/components/checklist";
+import { stepMark, stepNote, stepStatus } from "@/components/checklist";
 import { ROUNDS } from "@/sim/config";
 import { ROUND_FOCUS } from "@/sim/content";
 import type { FirmReport, ScoreBreakdown } from "@/sim/types";
@@ -27,7 +27,7 @@ export default function TeamHome() {
 
   const focus = ROUND_FOCUS[t.game.round];
   const steps = stepStatus(t);
-  const nextStep = steps.find((x) => x.state === "attention");
+  const nextStep = steps.find((x) => x.state === "attention") ?? steps.find((x) => x.state === "carried");
   const d = t.decision;
   return (
     <>
@@ -70,6 +70,19 @@ export default function TeamHome() {
         </div>
       </div>
 
+      {(t.news ?? []).length > 0 && (
+        <div className="panel" style={{ borderLeft: "4px solid var(--pulse)" }}>
+          <h2 style={{ marginTop: 0 }}>Market news</h2>
+          {(t.news ?? []).map((n, i) => (
+            <div key={i} style={{ marginBottom: 10 }}>
+              <b>{n.title}</b> <span className={`badge ${n.when === "now" ? "warn" : ""}`}>{n.when === "now" ? "This round" : "Expected next round"}</span>
+              <p style={{ margin: "4px 0 0" }}>{n.body}</p>
+            </div>
+          ))}
+          <p className="small muted" style={{ marginBottom: 0 }}>How your team responds is up to you. See the Learn tab for the ideas behind it.</p>
+        </div>
+      )}
+
       <div className="grid2">
         <div className="panel">
           <h2 style={{ marginTop: 0 }}>Due this round</h2>
@@ -77,10 +90,10 @@ export default function TeamHome() {
           <ul className="due">
             {steps.map((x, i) => (
               <li key={x.id}>
-                <span className={`dot ${x.state}`}>{x.state === "done" ? "✓" : x.state === "attention" ? "!" : ""}</span>
+                <span className={`dot ${x.state}`}>{stepMark(x)}</span>
                 <a href={`/play/decide?tab=${x.id}`}>{i + 1}. {x.label}</a>
                 <span className="spacer" />
-                <span className="small muted">{x.locked ? `Opens in ${x.opens}` : x.state === "attention" ? `${x.issues} to check` : "Done"}</span>
+                <span className="small muted">{stepNote(x)}</span>
               </li>
             ))}
           </ul>

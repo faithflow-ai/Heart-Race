@@ -11,14 +11,16 @@ export interface TeamData {
   guest: boolean;
   /** Guest in the class in progress: edits stay in the browser and are never saved. */
   tryIt: boolean;
-  game: { id: string; name: string; status: string; round: number; deadline: string | null; timezone: string };
+  game: { id: string; name: string; status: string; round: number; deadline: string | null; timezone: string; weights?: Record<"market" | "customer" | "financial" | "channel" | "goals", number> };
   firm: { id: string; name: string };
   members: { name: string; email: string }[];
   rivals: { id: string; name: string }[];
   decision: FirmDecision;
   updatedAt: string | null;
   budget: { carried: number; release: number; earned: number; available: number; research: number; promotion: number; remaining: number; futureReleases: number; limit: number; loan: number; capital: number; capacity: number };
-  committed: { id: string; launchRound: number; retired: boolean; unitCost: number }[];
+  committed: { id: string; launchRound: number; retired: boolean; unitCost: number; eventCost?: number }[];
+  /** Market event news for this round (and early warnings). */
+  news?: import("@/sim/events").NewsItem[];
   regionsEntered: Record<string, string>;
   channelsOpen: Record<string, string[]>;
   inventory: Record<string, Record<string, number>>;
@@ -56,6 +58,14 @@ function applyLocal(d: FirmDecision, op: Op): FirmDecision {
   return copy as unknown as FirmDecision;
 }
 
+/** A short name for the field a change-log path points at, for save messages. */
+function fieldLabel(path: string) {
+  const segs = path.split(".").filter((x) => !x.startsWith("#"));
+  const last = segs[segs.length - 1] ?? path;
+  const words: Record<string, string> = { briefSent: "brief", commission: "quote acceptance", targetSegment: "target segment", subscriptionPrice: "app plan price", capacityExpansion: "capacity to add", targetSegments: "target segments", targetRegions: "target regions", entryMode: "entry mode" };
+  return words[last] ?? last.replace(/([A-Z])/g, " $1").toLowerCase();
+}
+
 export function TeamProvider({ children }: { children: React.ReactNode }) {
   const [team, setTeam] = useState<TeamData | null>(null);
   const [error, setError] = useState("");
@@ -89,11 +99,18 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     pending.current = [];
     setSave("saving");
     try {
-      const r = await api<{ decision: FirmDecision }>("/api/team/decision", { method: "PATCH", body: { round: team.game.round, ops } });
+      const r = await api<{ decision: FirmDecision; refused?: { path: string; message: string }[] }>("/api/team/decision", { method: "PATCH", body: { round: team.game.round, ops } });
       setTeam((t) => (t ? { ...t, decision: pending.current.reduce(applyLocal, r.decision) } : t));
-      setSave(pending.current.length ? "pending" : "saved");
-      setSaveError("");
       setLastSaved(new Date());
+      if (r.refused?.length) {
+        // The other edits saved; say which one didn't and why.
+        setSave("error");
+        setSaveError(`${r.refused.length === 1 ? "one change" : `${r.refused.length} changes`} (${r.refused.map((x) => fieldLabel(x.path)).join(", ")}): ${r.refused[0].message} Your other changes were saved.`);
+        await reload();
+      } else {
+        setSave(pending.current.length ? "pending" : "saved");
+        setSaveError("");
+      }
     } catch (e) {
       setSave("error");
       setSaveError((e as Error).message);

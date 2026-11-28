@@ -9,5 +9,5 @@ export const PATCH = handle(async (req: Request) => {
   const { game, firm } = await studentContext(user);
   const b = (await req.json()) as { round: number; ops: Op[] };
   const out = await applyOps(game, firm.id, Number(b.round), user, b.ops ?? []);
-  return { decision: out.data, changed: out.changed, savedAt: new Date().toISOString() };
+  return { decision: out.data, changed: out.changed, refused: out.refused, savedAt: new Date().toISOString() };
 });

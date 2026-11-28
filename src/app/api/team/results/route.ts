@@ -4,7 +4,7 @@ import { normalizeDecision } from "@/sim/product";
 import { studentContext } from "@/lib/access";
 import { handle } from "@/lib/http";
 import { one } from "@/lib/db";
-import { realityCheck, segmentPanels } from "@/lib/insights";
+import { realityCheck, segmentPanels, studentReport } from "@/lib/insights";
 
 /** A team's own reports for a round, plus the public leaderboard. */
 export const GET = handle(async (req: Request) => {
@@ -27,7 +27,7 @@ export const GET = handle(async (req: Request) => {
     reality: round >= 1 ? realityCheck(res, firms, firm.id, res.decisions[firm.id]?.strategy?.positionMap, !!needs) : null,
     needsBought: !!needs,
     round,
-    report: res.reports[firm.id],
+    report: studentReport(res.reports[firm.id]),
     score: res.scores[firm.id] ?? null,
     decision: res.decisions[firm.id],
     accepted: Object.fromEntries(Object.values(res.state.firms[firm.id]?.products ?? {}).map((p) => [p.spec.id, { briefedRound: p.briefedRound, launchRound: p.launchRound }])),

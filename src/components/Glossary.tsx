@@ -4,7 +4,7 @@ export const GLOSSARY: Record<string, string> = {
   push: "Push: marketing aimed at channel partners so they move your product to buyers (trade promotion, margins).",
   pull: "Pull: marketing aimed at buyers so they ask for your brand (ads, search, social).",
   awareness: "The share of a segment's buyers who know your brand. People rarely buy a brand they haven't heard of.",
-  "potential share": "The share of buyers in a segment who wanted your product, before stockouts. The gap to your actual share is sales you left on the table.",
+  "potential share": "The share of buyers in a segment who wanted your product, including buyers who came over when a rival ran out of stock. The gap to your actual share is sales you left on the table.",
   "positioning map": "A picture of where buyers see each product on two criteria they care about. Positioning is what buyers perceive, not what you intend.",
   "pro forma": "A projected profit and loss built from your own forecast and decisions, before the market responds.",
   margin: "The share of the selling price a channel partner keeps.",

@@ -2,7 +2,7 @@
 import { CLAIMS, SEGMENTS, type ClaimId, type SegmentId } from "@/sim/config";
 import { SEGMENT_PROFILES } from "@/sim/market";
 import { perceived, priceScore, type PositionMap } from "@/sim/perception";
-import type { RoundResult } from "@/sim/types";
+import type { FirmReport, RoundResult } from "@/sim/types";
 
 type FirmLite = { id: string; name: string; is_ai: boolean };
 
@@ -30,6 +30,13 @@ export function segmentPanels(res: RoundResult, firms: FirmLite[], me: string, n
       wanted += demand;
       return { f, units, demand, rows };
     });
+    // The market event rival (not one of the class's firms) still takes buyers in its segment.
+    const rv = res.market.rival && res.market.rival.segment === s.id ? res.market.rival : null;
+    if (rv) {
+      sold += rv.units;
+      wanted += rv.demand;
+      per.push({ f: { id: "__event_rival", name: `${rv.name} (new entrant)`, is_ai: true }, units: rv.units, demand: rv.demand, rows: [] });
+    }
     const mine = per.find((x) => x.f.id === me);
     const myRev = mine ? mine.rows.reduce((a, r) => a + r.units * r.price, 0) : 0;
     return {
@@ -91,4 +98,26 @@ function ideal(seg: SegmentId, axis: ClaimId): number {
   }
   // Round to a tenth so the study shows an area, not an exact number.
   return Math.max(0.05, Math.min(0.95, Math.round(v * 10) / 10));
+}
+
+/**
+ * A team's report as students may see it. The engine's internal multipliers (claim, satisfaction,
+ * attractiveness, demand before stockouts) stay on the server, and fit and price appeal are sent as
+ * the whole-number 0-100 ratings the report shows, so the hidden buyer model can't be read from the data.
+ */
+export function studentReport(rep: FirmReport | undefined): FirmReport | null {
+  if (!rep) return null;
+  const rows = rep.rows.map((x) => ({
+    productId: x.productId,
+    segment: x.segment,
+    region: x.region,
+    price: x.price,
+    units: x.units,
+    share: x.share,
+    awareness: x.awareness,
+    availability: x.availability,
+    fit: Math.round(x.fit * 100) / 100,
+    priceFactor: Math.round(Math.min(1, x.priceFactor) * 100) / 100,
+  })) as unknown as FirmReport["rows"];
+  return { ...rep, rows };
 }
