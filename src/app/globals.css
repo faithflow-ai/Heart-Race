@@ -281,3 +281,35 @@ input.num-in { text-align: right; font-variant-numeric: tabular-nums; }
 .segkey li { margin: 4px 0; }
 @media (max-width: 1000px) { .reality-grid { grid-template-columns: 1fr; } }
 .mapsvg .maplabel.seg { font-weight: 500; fill: #8a5a00; }
+
+/* Debrief deck (instructor, projected in class) */
+.deck-controls { margin: 8px 0; gap: 16px; }
+.deck-controls label.inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--ink); }
+.deck-controls select { width: auto; }
+.deck-dots { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.deck-dots button { padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.deck-dots button.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.deck { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 36px; min-height: 520px; display: flex; flex-direction: column; font-size: 18px; }
+.deck:fullscreen { border: none; border-radius: 0; padding: 48px 64px; overflow: auto; font-size: 21px; }
+.deck-head h2 { font-size: 34px; margin: 2px 0 18px; }
+.deck-kicker { color: var(--accent); font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.6px; }
+.deck-body { flex: 1; }
+.deck-table th { font-size: 13px; }
+.deck-table td { padding: 8px 10px; vertical-align: middle; }
+.deck-stats .stat .v { font-size: 34px; }
+.deck-bar { flex: 1; height: 14px; background: #eef1f5; border-radius: 7px; overflow: hidden; min-width: 120px; }
+.deck-bar span { display: block; height: 100%; border-radius: 7px; }
+.deck-split { display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: #eef1f5; }
+.deck-split span { display: block; height: 100%; }
+.deck-moments { font-size: 1.15em; line-height: 1.6; padding-left: 24px; }
+.deck-moments li { margin-bottom: 10px; }
+.deck-q { margin-top: 20px; padding: 12px 18px; background: var(--accent-soft); border-radius: 8px; font-size: 0.95em; }
+.deck-q ul { margin: 4px 0 0; padding-left: 20px; }
+.deck-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; gap: 12px; }
+
+/* Activity heatmap (instructor) */
+.heat td.cell { text-align: center; font-size: 12px; min-width: 54px; border: 2px solid #fff; border-radius: 4px; }
+.heat td.team { font-weight: 700; padding-top: 14px; }
+.heat .ready { color: var(--good); font-weight: 700; }
+.deck-season { display: grid; grid-template-columns: 3fr 2fr; gap: 24px; align-items: start; }
+@media (max-width: 1400px) { .deck-season { grid-template-columns: 1fr; } }

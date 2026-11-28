@@ -141,7 +141,8 @@ export async function createDemoGame(instructor: User): Promise<GameRow> {
         "insert into decisions (firm_id, round, data, updated_by) values ($1,$2,$3,$4) on conflict (firm_id, round) do update set data = excluded.data, updated_at = now(), updated_by = excluded.updated_by",
         [f.id, round, JSON.stringify(d), byFirm[f.id][0].id],
       );
-      await sampleLog(f.id, round, byFirm[f.id], d);
+      // Team 2 enters Round 2 like software would, so the activity flags have something to show.
+      await sampleLog(f.id, round, byFirm[f.id], d, t === 1 && round === 2);
       const studies: StudyId[] = round === 0 ? ["survey"] : round === 1 ? (t % 2 ? ["price"] : ["needs"]) : t === 0 ? ["competitors"] : [];
       for (const s of studies) {
         try {
@@ -195,7 +196,7 @@ async function sampleCreative(firmIds: string[], byFirm: Record<string, User[]>,
 }
 
 /** A few change-log lines per round, by different teammates, so the log and its export have content. */
-export async function sampleLog(firmId: string, round: number, members: User[], d: FirmDecision) {
+export async function sampleLog(firmId: string, round: number, members: User[], d: FirmDecision, agentLike = false) {
   const lines: { path: string; old: unknown; new: unknown }[] = [];
   if (round === 0) {
     lines.push({ path: "strategy.companyName", old: "", new: d.strategy.companyName });
@@ -219,6 +220,25 @@ export async function sampleLog(firmId: string, round: number, members: User[], 
     lines.push({ path: "goals.revenue", old: null, new: d.goals.revenue });
   }
   if (d.reflection) lines.push({ path: "reflection", old: "", new: d.reflection });
+  if (agentLike) {
+    // One demo team fills in a whole round the way software would: one person, every field, a few
+    // seconds apart, plus a long pasted reflection. It shows what the instructor's activity flags look like.
+    for (const [pid, regs] of Object.entries(d.plan))
+      for (const [r, pl] of Object.entries(regs ?? {}))
+        if (pl) for (const k of ["price", "production", "forecast", "promotion"] as const) lines.push({ path: `plan.${pid}.${r}.${k}`, old: null, new: pl[k] });
+    for (const k of ["margin", "awareness", "satisfaction"] as const) lines.push({ path: `goals.${k}`, old: null, new: d.goals[k] });
+    const start = 60 * 60 * 24 * (4 - round) - 60 * 45;
+    for (let i = 0; i < lines.length; i++) {
+      const seconds = start - Math.round(i * 4.2 + (i % 3) * 0.4);
+      await q("insert into change_log (firm_id, round, user_id, at, path, old_value, new_value) values ($1,$2,$3, now() - ($4 || ' seconds')::interval, $5, $6, $7)", [
+        firmId, round, members[0].id, String(seconds), lines[i].path, JSON.stringify(lines[i].old), JSON.stringify(lines[i].new),
+      ]);
+    }
+    await q("insert into activity_signals (firm_id, round, user_id, at, kind, detail) values ($1,$2,$3, now() - ($4 || ' seconds')::interval, 'paste', $5)", [
+      firmId, round, members[0].id, String(start - lines.length * 5), JSON.stringify({ chars: 1180, field: "Round reflection" }),
+    ]);
+    return;
+  }
   let minutes = 60 * 24 * (4 - round);
   for (let i = 0; i < lines.length; i++) {
     const who = members[i % members.length];

@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { RoundTracker } from "@/components/RoundTracker";
 import { START_STEPS } from "@/sim/start";
 import { startStepsDone } from "@/components/start";
+import { PasteWatch } from "@/components/PasteWatch";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { team, error } = useTeam();
@@ -44,6 +45,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         ]}
       />
       {team && <RoundTracker team={team} />}
+      {team && <PasteWatch off={!!team.viewAs} />}
       {team?.tryIt && (
         <div className="viewas" style={{ background: "#e8f5e9", color: "#1b5e20", borderColor: "#b7dfb9" }}>
           <span><b>Try-it mode:</b> type in any field and click through the screens to see what students do. Nothing is saved, no round will run, and your entries clear when you reload the page.</span>

@@ -112,3 +112,16 @@ create table if not exists creative_submissions (
 
 -- Start here progress for each student in a class (Nov 2026). Additive: existing rows default to nothing done.
 alter table members add column if not exists onboarding jsonb not null default '{}'::jsonb;
+
+-- Activity signals (Nov 2026): things the change log can't see, such as a large paste into a text box.
+-- Used only for the instructor's unusual activity flags.
+create table if not exists activity_signals (
+  id bigserial primary key,
+  firm_id text not null references firms(id) on delete cascade,
+  round int not null,
+  user_id text not null,
+  at timestamptz not null default now(),
+  kind text not null,
+  detail jsonb
+);
+create index if not exists activity_signals_firm on activity_signals (firm_id, round);
