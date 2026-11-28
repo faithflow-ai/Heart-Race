@@ -35,6 +35,20 @@ describe("debrief", () => {
     const d = debriefRound(results[1], results[0], firms);
     expect(d.leaderboard.every((x) => x.prevRank === null)).toBe(true);
   });
+  it("Round 1 adds the launch comparison: the top AI rival first, then each student team", () => {
+    // Treat the last two firms as student teams for this check.
+    const mixed = firms.map((f, i) => (i >= 6 ? { ...f, is_ai: false } : f));
+    const d = debriefRound(results[1], results[0], mixed);
+    expect(d.launch).toBeDefined();
+    const rows = d.launch!;
+    expect(rows).toHaveLength(3);
+    expect(rows[0].isAi).toBe(true);
+    const bestAi = Math.max(...mixed.filter((f) => f.is_ai).map((f) => results[1].scores[f.id].total));
+    expect(rows[0].total).toBe(bestAi);
+    expect(rows[0].regions.length).toBeGreaterThan(0);
+    expect(rows[0].fit).not.toBeNull();
+    expect(debriefRound(results[2], results[1], mixed).launch).toBeUndefined();
+  });
   it("season covers scored rounds only", () => {
     const s = debriefSeason(results, firms);
     expect(s.rounds).toEqual([1, 2, 3]);

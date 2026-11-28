@@ -111,6 +111,7 @@ function buildSlides(d: Data): Slide[] {
     { id: "overview", title: "The market this round", render: Overview },
     { id: "leaderboard", title: "Leaderboard", render: Leaderboard },
     { id: "segments", title: "Who won each segment", render: Segments },
+    ...(d.round?.launch?.length ? [{ id: "launch", title: "How a rival launched", render: Launch }] : []),
     { id: "pushPull", title: "Push and pull", render: PushPull },
     { id: "supply", title: "Forecast vs. reality", render: Supply },
     { id: "goals", title: "Goals vs. actual", render: Goals },
@@ -187,6 +188,32 @@ function Segments(c: Ctx) {
       </tbody>
       <tfoot><tr><td colSpan={4} className="small muted">&quot;Could have won&quot; is the share buyers wanted to buy from that firm. The difference was lost to stockouts, missing stores or rivals.</td></tr></tfoot>
     </table>
+  );
+}
+
+/** Round 1: the strongest AI rival's launch choices next to each student team's. Describes, never prescribes. */
+function Launch(c: Ctx) {
+  const rows = c.r.launch ?? [];
+  const list = (xs: string[]) => (xs.length ? xs.join(", ") : <span className="muted">None</span>);
+  return (
+    <>
+      <table className="deck-table">
+        <thead><tr><th>Firm</th><th>Regions entered</th><th>Channels used</th><th className="num">Product fit with its target segment</th><th>Prices</th><th className="num">Round score</th></tr></thead>
+        <tbody>
+          {rows.map((x) => (
+            <tr key={x.id} style={x.isAi ? { background: "var(--panel-2, #f3f5f9)" } : undefined}>
+              <td><Name c={c} id={x.id} /></td>
+              <td>{x.regions.length} <span className="small muted">{list(x.regions)}</span></td>
+              <td><span className="small">{list(x.channels)}</span></td>
+              <td className="num">{x.fit === null ? <span className="muted">No sales</span> : <b>{x.fit}</b>}{x.products > 0 && <div className="small muted">{x.products} product{x.products > 1 ? "s" : ""}</div>}</td>
+              <td>{x.priceRange ? <>{x.pricesVary ? "Different by region" : "Same everywhere"}<div className="small muted">{money(x.priceRange[0])}{x.priceRange[1] !== x.priceRange[0] ? ` to ${money(x.priceRange[1])}` : ""}</div></> : <span className="muted">–</span>}</td>
+              <td className="num"><b>{x.total.toFixed(1)}</b></td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot><tr><td colSpan={6} className="small muted">The first row is the AI rival with the highest Round 1 score. AI rivals decide from the same kinds of information teams can buy in Research. Fit is 0 to 100, averaged over the regions where each product sold to its target segment.</td></tr></tfoot>
+      </table>
+    </>
   );
 }
 

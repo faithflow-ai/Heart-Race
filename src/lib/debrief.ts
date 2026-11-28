@@ -3,7 +3,7 @@
  * Pure functions over stored round results, so they can be tested without a database.
  * Everything here describes what happened. It never tells students what to do.
  */
-import { AD_MEDIA, ROUNDS, SEGMENTS, type SegmentId } from "@/sim/config";
+import { AD_MEDIA, CHANNELS, REGIONS, ROUNDS, SEGMENTS, type SegmentId } from "@/sim/config";
 import type { RoundResult } from "@/sim/types";
 import { segmentPanels } from "./insights";
 
@@ -24,6 +24,24 @@ export interface DebriefRound {
   supply: { id: string; forecast: number; produced: number; sold: number; lost: number; leftover: number; accuracy: number | null }[];
   goals: { id: string; set: number; onTarget: number; rows: { label: string; goal: number | null; actual: number; key: string }[] }[];
   moments: string[];
+  /** Round 1 only: how the top-scoring AI rival launched, next to each student team. */
+  launch?: LaunchRow[];
+}
+
+/** One firm's launch choices, for the Round 1 "How a rival launched" slide. */
+export interface LaunchRow {
+  id: string;
+  isAi: boolean;
+  regions: string[];
+  /** Channels used, as names, across the regions entered. */
+  channels: string[];
+  /** Average fit (0-100) of each product with its own target segment, over the regions where it sold. */
+  fit: number | null;
+  products: number;
+  /** Did any product carry different prices in different regions? */
+  pricesVary: boolean;
+  priceRange: [number, number] | null;
+  total: number;
 }
 
 export interface DebriefSeason {
@@ -145,6 +163,7 @@ export function debriefRound(res: RoundResult, prev: RoundResult | null, firms: 
   }
 
   return {
+    launch: res.round === 1 ? launchRows(res, live) : undefined,
     round: res.round,
     name: ROUNDS.names[res.round] ?? `Round ${res.round}`,
     market: { buyers, unitsSold, avgPrice: priceUnits > 0 ? priceSum / priceUnits : null, revenue },
@@ -155,6 +174,46 @@ export function debriefRound(res: RoundResult, prev: RoundResult | null, firms: 
     goals,
     moments,
   };
+}
+
+const REG_NAME = Object.fromEntries(REGIONS.map((r) => [r.id, r.name])) as Record<string, string>;
+const CH_NAME = Object.fromEntries(CHANNELS.map((c) => [c.id, c.name])) as Record<string, string>;
+
+/** Launch choices for the strongest AI rival (first) and every student team. */
+export function launchRows(res: RoundResult, firms: DebriefFirm[]): LaunchRow[] {
+  const ais = firms.filter((f) => f.is_ai && res.scores[f.id]).sort((a, b) => (res.scores[b.id]?.total ?? 0) - (res.scores[a.id]?.total ?? 0));
+  const pick = [...ais.slice(0, 1), ...firms.filter((f) => !f.is_ai)];
+  return pick.map((f) => {
+    const st = res.state.firms[f.id];
+    const d = res.decisions?.[f.id];
+    const regions = Object.keys(st?.regions ?? {}).filter((r) => (st?.regions as Record<string, unknown>)[r]);
+    const channels = [...new Set(regions.flatMap((r) => (st?.channelsOpen as Record<string, string[]> | undefined)?.[r] ?? []))];
+    const rep = res.reports[f.id];
+    const prods = d?.products ?? [];
+    const fits: number[] = [];
+    for (const p of prods) {
+      const rows = rep?.rows.filter((x) => x.productId === p.id && x.segment === p.targetSegment) ?? [];
+      if (rows.length) fits.push(rows.reduce((a, x) => a + x.fit, 0) / rows.length);
+    }
+    let vary = false;
+    const all: number[] = [];
+    for (const p of prods) {
+      const prices = regions.map((r) => (d?.plan?.[p.id] as Record<string, { price?: number }> | undefined)?.[r]?.price ?? 0).filter((x) => x > 0);
+      all.push(...prices);
+      if (prices.length >= 2 && Math.max(...prices) / Math.min(...prices) > 1.03) vary = true;
+    }
+    return {
+      id: f.id,
+      isAi: f.is_ai,
+      regions: regions.map((r) => REG_NAME[r] ?? r),
+      channels: channels.map((c) => CH_NAME[c] ?? c),
+      fit: fits.length ? Math.round((100 * fits.reduce((a, b) => a + b, 0)) / fits.length) : null,
+      products: fits.length,
+      pricesVary: vary,
+      priceRange: all.length ? [Math.min(...all), Math.max(...all)] : null,
+      total: res.scores[f.id]?.total ?? 0,
+    };
+  });
 }
 
 /** Season so far (for the board meetings): every scored round through `upTo`. */
