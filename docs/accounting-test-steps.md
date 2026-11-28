@@ -29,3 +29,8 @@ Use the Vercel preview link on the PR, or the live site after merging. The quick
 ## 6. Round 1 market projection
 1. In Round 1, on **Review and ready**, click **Run projection**.
 2. The text says each rival is filled in with a typical launch plan, and that the two estimates will differ. The projection should no longer look like an empty market.
+
+## 7. Production cost on the Forecast and production screen
+1. In Round 1 or later, open **Forecast and production**.
+2. Under the capacity bar, a line shows **Cost of making these units** and the capital left for production after this round's fees.
+3. Raise production until the cost is more than that capital: the red **Company capital warning** appears at the top.
