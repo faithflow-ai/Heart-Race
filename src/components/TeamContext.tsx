@@ -28,6 +28,8 @@ export interface TeamData {
   inventory: Record<string, Record<string, number>>;
   processed: { round: number; processed_at: string }[];
   research: { round: number; study: string }[];
+  /** An open peer evaluation for this student, if any. */
+  peer?: { windowId: string; name: string; closesAt: string | null; submitted: boolean } | null;
   /** Latest edit on each decision step this round. */
   lastEdits?: Record<string, { name: string; at: string }>;
   /** Start here steps this student has finished; null when an instructor or guest views the team. */

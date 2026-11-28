@@ -124,3 +124,16 @@ A Learn lesson, "Market events: responding to shocks" (added Nov 28), opens for 
 
 - No single strategy wins. In testing, pricing 30% low lost money and ranked near last, cutting promotion 90% ranked near last, and doubling promotion added nothing.
 - Test method: `npm run balance`, plus one firm playing variations of the AI's own decisions against 7 rivals over 3 market draws.
+
+## 9. Peer evaluation (built Nov 28)
+
+| Rule | Value | Who sees it |
+|---|---|---|
+| Windows | Early check-in (after Round 2, optional, not graded), Peer evaluation 1 (after board meeting 1, 40%), Peer evaluation 2 (after the final board meeting, 60%). The instructor sets open and close times, or clicks Open now (5 days) | Students: Peer evaluation page |
+| Items | Shows up and meets deadlines; Does a fair share of the analysis and decisions; Quality of ideas and preparation; Communicates and works well with others; Follows the team charter. Scale 1 to 10 (1 not at all, 4 sometimes, 7 usually, 10 always) | Students |
+| Comments | One thing done well and one thing to improve per teammate (required). Optional private note to the instructor | Students |
+| Self-rating | Required, shown next to the teammates' average, never counted | Students |
+| Score | Average from teammates x 10 (0 to 100), minus 10 for not submitting. Instructor can override any score | Students see their own after release |
+| Grade | Peer score = 40% evaluation 1 + 60% evaluation 2 (whichever exist). Student sim score = 80% team part (percent of best team, capped at 100) + 20% peer score, in the Final scores CSV | Instructor (CSV) |
+| Anonymity | Students see their own averages and comments without names, only after the instructor releases. Instructor can hide a comment | Instructor sees all |
+| Flags | Average under 6, self-rating 2+ points above teammates' average, same score for every teammate on every item, not submitted. Shown with each student's change log edit count | Instructor only |

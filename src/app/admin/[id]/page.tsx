@@ -85,6 +85,7 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
         <a href={`/admin/${id}/debrief`}>Debrief (project in class)</a>
         <a href={`/admin/${id}/activity`}>Activity and flags</a>
         <a href={`/admin/${id}/creative`}>Grade creative work</a>
+        <a href={`/admin/${id}/peer`}>Peer evaluation</a>
         <a href="/admin">← All classes</a>
       </div>
       {msg && <div className={`notice ${msg.kind}`}>{msg.text}</div>}
@@ -126,7 +127,8 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
           <h2 style={{ marginTop: 0 }}>Exports (CSV)</h2>
           <ul>
             <li><a href={`/api/games/${id}/export?type=scores`}>Scores by round</a> (every firm, every measure)</li>
-            <li><a href={`/api/games/${id}/export?type=final`}>Final weighted scores and grade bands</a> (one row per student)</li>
+            <li><a href={`/api/games/${id}/export?type=final`}>Final weighted scores and grade bands</a> (one row per student, with peer scores)</li>
+            <li><a href={`/api/games/${id}/export?type=peer`}>Peer evaluations</a> (every rating and comment, with names)</li>
             <li><a href={`/api/games/${id}/export?type=roster`}>Roster</a></li>
             <li><a href={`/api/games/${id}/export?type=reflections`}>Round reflections</a></li>
             <li><a href={`/api/games/${id}/export?type=log`}>Change log</a> (who changed what, for peer-evaluation disputes)</li>
