@@ -29,7 +29,7 @@ export const EVENT_RULES = {
     /** Unit cost added per chip, as a share of the chip's listed cost. */
     costUp: { basic: 0, mid: 0.3, advanced: 1.5 },
     /** Each firm's advanced-chip allocation per round: this share of the advanced-chip units it sold the round before the shortage... */
-    allocationShare: 0.4,
+    allocationShare: 0.35,
     /** ...but never fewer than this. */
     allocationMin: 4_000,
   },
@@ -37,7 +37,7 @@ export const EVENT_RULES = {
     name: EVENT_META.rival.name,
     brand: "Zenra",
     /** How well the rival's product fits its segment (0..1). */
-    fit: 0.9,
+    fit: 0.95,
     /** Its price versus what the segment expects. It matches price cuts down to a floor... */
     priceVsRef: 0.95,
     /** ...which is low in segments that buy on brand and features (a price cut there just gets matched)... */
@@ -48,23 +48,23 @@ export const EVENT_RULES = {
     /** In a value segment, attractiveness is multiplied by (rival price / your price) ^ (sensitivity x this). */
     valuePriceWeight: 1.5,
     /** Awareness in the main region the first round, rising each round after. */
-    awareness: 0.8,
+    awareness: 0.9,
     awarenessGrowth: 0.08,
     /** Reach and awareness in the segment's other regions, as a share of the main region's. */
-    otherRegions: 0.45,
-    availability: 0.85,
+    otherRegions: 0.7,
+    availability: 0.95,
     claimFactor: 1.12,
     /** A true claim about the rival's weakness counts this much (instead of the usual claim bonus) in the rival's segment. */
-    weaknessClaimBonus: 0.5,
+    weaknessClaimBonus: 1.0,
     /** Shelf squeeze: partners give the rival shelf space unless your trade promotion holds it. Share of reach lost with no trade. */
-    shelfSqueeze: 0.6,
+    shelfSqueeze: 0.8,
     /** Trade promotion (per product, per region) that wins back half of the squeeze. */
-    shelfHalfSpend: 40_000,
+    shelfHalfSpend: 120_000,
   },
   tariff: {
     name: EVENT_META.tariff.name,
     /** Duty on the imported parts (everything except assembly, packaging and the app). */
-    rate: 0.4,
+    rate: 0.7,
   },
 } as const;
 
@@ -226,7 +226,7 @@ export function newsFor(round: number, seed: number, firms: FirmMeta[], latest: 
       body:
         `${EVENT_RULES.rival.brand}, a well-funded newcomer, ${ev.rival.roundsIn === 0 ? "has launched" : "is selling"} a product aimed squarely at ${segName(v.segment)}, ` +
         `led by a big push in ${regionName(v.region)} and sold online elsewhere. Early reviews praise the design and the price, which sits a little under what these buyers usually pay. ` +
-        `${isValueSegment(v.segment) ? `Analysts say ${EVENT_RULES.rival.brand}'s price is already close to its cost.` : `${EVENT_RULES.rival.brand} says it will match competitors' price cuts.`} Reviewers' one complaint: ${weaknessLine(v.weakness)} ` +
+        `${isValueSegment(v.segment) ? `Analysts say ${EVENT_RULES.rival.brand}'s price is already close to its cost, so it has little room to cut further.` : `${EVENT_RULES.rival.brand} says it will match competitors' price cuts.`} Reviewers' one complaint: ${weaknessLine(v.weakness)} ` +
         `Retail partners are making shelf space for the newcomer.`,
     });
   }

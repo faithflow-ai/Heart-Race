@@ -13,7 +13,7 @@ import { SEGMENT_PROFILES } from "../src/sim/market";
 import { supportedClaims, unitCostAt } from "../src/sim/product";
 import type { FirmDecision, FirmMeta, GameState, RoundResult } from "../src/sim/types";
 
-type Mode = "none" | "partial" | "strong" | "pricewar" | "pricecut";
+type Mode = "none" | "partial" | "strong" | "pricewar" | "pricecut" | "adsonly";
 const SEEDS = [1, 2, 3, 4];
 const STYLES: { style: FirmMeta["aiStyle"]; slot: number }[] = [
   { style: "premium", slot: 0 },
@@ -65,12 +65,18 @@ function respond(ev: EventId, mode: Mode, d: FirmDecision, state: GameState | nu
     const v = active.rival;
     const mine = cells.filter((x) => spec(x.pid)?.targetSegment === v.segment);
     // Baseline: a team that doesn't talk about the rival's weak spot.
-    if (mode !== "strong") for (const p of d.products) if (spec(p.id)?.targetSegment === v.segment) p.claims = p.claims.filter((c) => c !== v.weakness);
+    if (mode !== "strong" && mode !== "partial") for (const p of d.products) if (spec(p.id)?.targetSegment === v.segment) p.claims = p.claims.filter((c) => c !== v.weakness);
     // Price moves happen once, when the rival arrives (prices carry forward after that).
     if (round === 5 && mode === "pricewar") for (const x of mine) x.c.price = Math.round(x.c.price * 0.8);
     if (round === 5 && mode === "pricecut") for (const x of mine) x.c.price = Math.round(x.c.price * Number(process.env.CUT ?? 0.92));
     if (round === 5 && mode === "strong" && isValueSegment(v.segment)) for (const x of mine) x.c.price = Math.round(x.c.price * Number(process.env.CUT ?? 0.92));
-    if (mode === "partial") for (const x of mine) for (const m of ["digital", "search", "traditional"] as const) x.c.media[m] = Math.round(x.c.media[m] * 1.3);
+    // Partial = one strong lever only: claim the weak spot, no extra trade support or forecast change.
+    if (mode === "partial")
+      for (const p of d.products) {
+        const s = spec(p.id);
+        if (s && s.targetSegment === v.segment && supportedClaims(s).has(v.weakness) && !p.claims.includes(v.weakness)) p.claims = [v.weakness, ...p.claims].slice(0, 3);
+      }
+    if (mode === "adsonly") for (const x of mine) for (const m of ["digital", "search", "traditional"] as const) x.c.media[m] = Math.round(x.c.media[m] * 1.3);
     if (mode === "strong") {
       for (const p of d.products) {
         const s = spec(p.id);
@@ -79,9 +85,11 @@ function respond(ev: EventId, mode: Mode, d: FirmDecision, state: GameState | nu
         p.campaign = { ...p.campaign, segment: v.segment };
       }
       for (const x of mine) {
-        if (x.r === v.region) x.c.media.trade = Math.max(60_000, Math.round(x.c.media.trade * 2));
-        x.c.forecast = Math.round(x.c.forecast * 0.9);
-        x.c.production = Math.round(x.c.production * 0.92);
+        if (x.r === v.region) x.c.media.trade = Math.max(Number(process.env.RTRADE ?? 150_000), Math.round(x.c.media.trade * 2));
+        if ((process.env.RTRIM ?? "0") !== "0") {
+          x.c.forecast = Math.round(x.c.forecast * 0.9);
+          x.c.production = Math.round(x.c.production * 0.92);
+        }
       }
     }
     for (const x of mine) x.c.promotion = x.c.media.digital + x.c.media.search + x.c.media.traditional + x.c.media.trade;
@@ -89,7 +97,7 @@ function respond(ev: EventId, mode: Mode, d: FirmDecision, state: GameState | nu
   if (ev === "tariff" && active.tariff && round === 6) {
     if (mode === "partial") for (const x of cells) x.c.price = Math.round(x.c.price * 1.05);
     if (mode === "strong") {
-      const hi = Number(process.env.TLOW ?? 1.0), lo = Number(process.env.THIGH ?? 0.6), shift = Number(process.env.TSHIFT ?? 0);
+      const hi = Number(process.env.TLOW ?? 0.8), lo = Number(process.env.THIGH ?? 0.8), shift = Number(process.env.TSHIFT ?? 0);
       for (const x of cells) {
         const sens = SEGMENT_PROFILES[spec(x.pid)?.targetSegment ?? "wellness"].priceSensitivity;
         const low = sens <= 1.4;
@@ -155,7 +163,7 @@ function play(ev: EventId, mode: Mode, seed: number, style: FirmMeta["aiStyle"],
 
 const WINDOW: Record<EventId, number[]> = { chip: [4, 5], rival: [5, 6, 7], tariff: [6, 7] };
 for (const ev of (process.env.EV ? [process.env.EV] : ["chip", "rival", "tariff"]) as EventId[]) {
-  const modes: Mode[] = ev === "rival" ? ["none", "partial", "pricecut", "pricewar", "strong"] : ["none", "partial", "strong"];
+  const modes: Mode[] = ev === "rival" ? ["none", "adsonly", "partial", "pricecut", "pricewar", "strong"] : ["none", "partial", "strong"];
   console.log(`\n=== ${EVENT_RULES[ev].name} (rounds ${WINDOW[ev].join(", ")}) ===`);
   const rowsOut: Record<Mode, { score: number[]; profit: number[] }> = {} as never;
   const perStyle: string[] = [];
