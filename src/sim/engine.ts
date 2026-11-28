@@ -26,6 +26,10 @@ import { AWARENESS, CAMPAIGN, CHANNEL_PUSH, DEMAND_MODEL, REGION_PROFILES, SATIS
 import { cellPromo, claimIsTrue, emptyMedia, normalizeDecision, quote, regionIds, specProblems, unitCostAt } from "./product";
 import { mulberry32, hashString } from "./rng";
 import { fit } from "./fit";
+import { EVENT_RULES, eventSchedule, eventUnitCost, eventsForRound, isValueSegment, rivalFloor, type ActiveEvents } from "./events";
+
+/** Row owner for the event rival (not a firm in the class). */
+export const RIVAL_ID = "__event_rival";
 import type {
   FirmDecision,
   FirmMeta,
@@ -226,6 +230,10 @@ export function processRound(input: ProcessInput): RoundResult {
   const state: GameState = input.prevState ? clone(input.prevState) : initialState(firms, settings);
   state.round = round;
   const rng = mulberry32(input.seed * 7919 + round * 104729);
+  // Market events in force this round (the rival's details are fixed the first round it appears).
+  const ev: ActiveEvents = eventsForRound(round, input.seed, firms, input.prevResult ?? null, input.prevState, settings);
+  if (ev.chip) state.events = { ...(state.events ?? {}), chipStart: eventSchedule(settings).chip ?? undefined, chipAlloc: ev.chipAlloc };
+  if (ev.rival) state.events = { ...(state.events ?? {}), rival: { segment: ev.rival.segment, region: ev.rival.region, weakness: ev.rival.weakness, startRound: ev.rival.startRound } };
 
   const decisions: Record<string, FirmDecision> = {};
   const reports: Record<string, FirmReport> = {};
@@ -501,12 +509,23 @@ export function processRound(input: ProcessInput): RoundResult {
             for (const c of ps.spec.claims.slice(0, 3)) {
               const isTrue = claimIsTrue(ps.spec, c, plan.price, refPrice(s, r));
               if (!isTrue) lies++;
-              if (SEGMENT_PROFILES[s].caresAbout.includes(c)) claimF += isTrue ? DEMAND_MODEL.claimBonus : DEMAND_MODEL.falseClaimSalesBonus;
+              if (SEGMENT_PROFILES[s].caresAbout.includes(c)) {
+                // While the event rival is in this segment, a true claim about its weak spot counts extra.
+                const vsRival = ev.rival && ev.rival.segment === s && ev.rival.weakness === c;
+                claimF += isTrue ? (vsRival ? EVENT_RULES.rival.weaknessClaimBonus : DEMAND_MODEL.claimBonus) : DEMAND_MODEL.falseClaimSalesBonus;
+              }
             }
             falseClaims[f.id][pid] = Math.max(falseClaims[f.id][pid] ?? 0, lies);
             const sat = fs.satisfaction[pid] ?? SATISFACTION.start;
             const satF = 1 + DEMAND_MODEL.satisfactionEffect * (sat - SATISFACTION.start);
             const attr = Math.pow(ft, DEMAND_MODEL.fitPower) * pf * Math.pow(DEMAND_MODEL.awarenessFloor + aw, DEMAND_MODEL.awarenessPower) * claimF * satF;
+            // The event rival takes partner shelf space in its main region unless trade promotion holds it.
+            let avTotal = av.total;
+            if (ev.rival && ev.rival.segment === s && ev.rival.region === r && totA > 0) {
+              const partnerShare = (Object.entries(av.byChannel) as [ChannelId, number][]).reduce((a, [ch, w]) => a + (CHANNEL_TERMS[ch].margin > 0 ? w : 0), 0) / totA;
+              const hold = trade > 0 ? trade / (trade + EVENT_RULES.rival.shelfHalfSpend) : 0;
+              avTotal *= 1 - EVENT_RULES.rival.shelfSqueeze * partnerShare * (1 - hold);
+            }
             const row: ShareRow = {
               productId: pid,
               segment: s,
@@ -514,7 +533,7 @@ export function processRound(input: ProcessInput): RoundResult {
               fit: ft,
               priceFactor: pf,
               awareness: aw,
-              availability: av.total,
+              availability: avTotal,
               claimFactor: claimF,
               satisfactionFactor: satF,
               attractiveness: attr,
@@ -530,6 +549,31 @@ export function processRound(input: ProcessInput): RoundResult {
         }
       }
       reports[f.id].promo = promo;
+    }
+
+    // Market event: the new rival's product (not a firm in the class; it never runs out of stock).
+    if (ev.rival) {
+      const R = EVENT_RULES.rival;
+      const v = ev.rival;
+      for (const r of regionIds) {
+        const main = r === v.region;
+        const ref = refPrice(v.segment, r);
+        const cell = rows.filter((x) => x.segment === v.segment && x.region === r);
+        const lowest = cell.length ? Math.min(...cell.map((x) => x.price)) : Infinity;
+        const price = Math.max(ref * rivalFloor(v.segment), Math.min(ref * R.priceVsRef, lowest));
+        const aw = Math.min(0.9, (R.awareness + R.awarenessGrowth * v.roundsIn) * (main ? 1 : R.otherRegions));
+        const pf = priceFactor(v.segment, r, price);
+        const attr = Math.pow(R.fit, DEMAND_MODEL.fitPower) * pf * Math.pow(DEMAND_MODEL.awarenessFloor + aw, DEMAND_MODEL.awarenessPower) * R.claimFactor;
+        const row: ShareRow = { productId: RIVAL_ID, segment: v.segment, region: r, fit: R.fit, priceFactor: pf, awareness: aw, availability: R.availability * (main ? 1 : R.otherRegions), claimFactor: R.claimFactor, satisfactionFactor: 1, attractiveness: attr, demandUnits: 0, units: 0, share: 0, price };
+        rows.push(row);
+        rowFirm.set(row, RIVAL_ID);
+        // In a value segment, buyers compare price against the rival directly: undercutting it wins buyers,
+        // being dearer loses them. (Elsewhere they compare features and brand, and the rival matches cuts.)
+        if (isValueSegment(v.segment)) {
+          const k = SEGMENT_PROFILES[v.segment].priceSensitivity * R.valuePriceWeight * (main ? 1 : R.otherRegions);
+          for (const x of cell) x.attractiveness *= Math.max(0.5, Math.min(1.8, Math.pow(price / x.price, k)));
+        }
+      }
     }
 
     // Split each segment-region's demand among reachable products.
@@ -585,6 +629,21 @@ export function processRound(input: ProcessInput): RoundResult {
       producedMap[`${x.pid}|${x.r}`] = q;
       produced += q;
     }
+    // Chip shortage: only so many advanced chips per firm. Planned units beyond the allocation can't be built.
+    if (ev.chip) {
+      const advKeys = Object.keys(producedMap).filter((k) => fs.products[k.split("|")[0]]?.spec.chip === "advanced");
+      const advUnits = advKeys.reduce((a, k) => a + producedMap[k], 0);
+      const alloc = ev.chipAlloc[f.id] ?? EVENT_RULES.chip.allocationMin;
+      if (advUnits > alloc) {
+        const k2 = alloc / advUnits;
+        for (const k of advKeys) {
+          const q2 = Math.floor(producedMap[k] * k2);
+          produced -= producedMap[k] - q2;
+          producedMap[k] = q2;
+        }
+        rep.notes.push(`Chip shortage: you planned ${advUnits.toLocaleString()} units that need advanced chips, but your allocation was ${alloc.toLocaleString()}. Only ${Math.round(k2 * 100)}% of those units could be built.`);
+      }
+    }
     const overtime = Math.max(0, produced - fs.capacity);
     rep.capacity.used = produced;
     rep.capacity.overtime = overtime;
@@ -592,7 +651,7 @@ export function processRound(input: ProcessInput): RoundResult {
     for (const ps of Object.values(fs.products)) {
       if (ps.launchRound > round && !ps.retired) continue;
       const pid = ps.spec.id;
-      const uc = unitCostAt(ps.quotedUnitCost, ps.cumUnits, round, ps.briefedRound);
+      const uc = eventUnitCost(unitCostAt(ps.quotedUnitCost, ps.cumUnits, round, ps.briefedRound), ps.quotedUnitCost, ps.spec, ev);
       let pUnits = 0;
       let pRev = 0;
       let pProduced = 0;
@@ -623,6 +682,9 @@ export function processRound(input: ProcessInput): RoundResult {
     if (overtime > 0 && produced > 0) pnl.overtimePremium = ((pnl.production ?? 0) / produced) * overtime * PRODUCTION.overtimeCostPremium;
   }
 
+  // The event rival always has stock.
+  for (const x of rows) if (rowFirm.get(x) === RIVAL_ID) x.units = x.demandUnits;
+
   // Stockout spill: part of the unmet demand goes to rivals with stock left in that cell.
   if (round >= 1 && DEMAND_MODEL.stockoutSpillToRivals > 0) {
     for (const s of segIds)
@@ -630,7 +692,7 @@ export function processRound(input: ProcessInput): RoundResult {
         const cell = rows.filter((x) => x.segment === s && x.region === r);
         const unmet = cell.reduce((a, x) => a + Math.max(0, x.demandUnits - x.units), 0) * DEMAND_MODEL.stockoutSpillToRivals;
         if (unmet < 1) continue;
-        const takers = cell.filter((x) => x.units >= x.demandUnits - 0.5);
+        const takers = cell.filter((x) => x.units >= x.demandUnits - 0.5 && rowFirm.get(x) !== RIVAL_ID);
         const wE = takers.reduce((a, x) => a + x.attractiveness * x.availability, 0);
         if (wE <= 0) continue;
         for (const x of takers) {
@@ -863,7 +925,11 @@ export function processRound(input: ProcessInput): RoundResult {
     }
   }
 
-  return { round, state, reports, scores, market: { demand, unitsByFirmSegment, pricesByFirm }, decisions };
+  const rivalRows = rows.filter((x) => rowFirm.get(x) === RIVAL_ID);
+  const rival = ev.rival && rivalRows.length
+    ? { name: EVENT_RULES.rival.brand, segment: ev.rival.segment, units: Math.round(rivalRows.reduce((a, x) => a + x.units, 0)), demand: Math.round(rivalRows.reduce((a, x) => a + x.demandUnits, 0)) }
+    : undefined;
+  return { round, state, reports, scores, market: { demand, unitsByFirmSegment, pricesByFirm, ...(rival ? { rival } : {}) }, decisions };
 }
 
 function round1(n: number) {

@@ -5,6 +5,7 @@ import { firmMeta, getFirms, getResult, processedRounds, setTeamCount, settingsO
 import { instructorGame } from "@/lib/access";
 import { deleteDemoGame, demoInfo } from "@/lib/demo";
 import { handle } from "@/lib/http";
+import { EVENT_IDS, EVENT_META, eventSchedule } from "@/sim/eventSchedule";
 import { nextDeadline, zonedToUtc } from "@/lib/time";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -104,6 +105,20 @@ export const PATCH = handle(async (req: Request, ctx: Ctx) => {
     const mb = { ...s.marketingBudget };
     for (const k of ["earnedBase", "earnedRevenueShare", "earnedFloor", "earnedCapGrowth"] as const) if (b.budget[k] !== undefined) mb[k] = Number(b.budget[k]);
     await q("update games set settings = $1 where id = $2", [JSON.stringify({ ...s, marketingBudget: mb }), g.id]);
+  }
+  if (b.events) {
+    const s = settingsOf(g);
+    const cur = eventSchedule(s);
+    const next = { ...(s.events ?? {}) };
+    for (const id of EVENT_IDS) {
+      if (!(id in b.events)) continue;
+      const v = b.events[id] === null ? null : Number(b.events[id]);
+      if (v === cur[id]) continue;
+      if (cur[id] !== null && cur[id]! <= g.current_round) throw new HttpError(400, `${EVENT_META[id].name} is already under way and can't be changed.`);
+      if (v !== null && (!Number.isInteger(v) || v <= g.current_round || v < 1 || v > 7)) throw new HttpError(400, `Pick a round that hasn't opened yet for ${EVENT_META[id].name}.`);
+      next[id] = v;
+    }
+    await q("update games set settings = $1 where id = $2", [JSON.stringify({ ...s, events: next }), g.id]);
   }
   return { ok: true };
 });

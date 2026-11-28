@@ -171,6 +171,8 @@ export interface FirmState {
 export interface GameState {
   round: number;
   firms: Record<string, FirmState>;
+  /** Market event details fixed when they first happen (missing in older states). */
+  events?: { rival?: import("./events").RivalVariant; chipStart?: number; chipAlloc?: Record<string, number> };
 }
 
 /** One row of the share model: a product in a segment in a region. */
@@ -266,6 +268,8 @@ export interface RoundResult {
     demand: Record<SegmentId, Record<RegionId, number>>;
     unitsByFirmSegment: Record<string, Partial<Record<SegmentId, number>>>;
     pricesByFirm: Record<string, { productId: string; name: string; tier: Tier; region: RegionId; price: number }[]>;
+    /** Market event: the outside rival's units in its segment (missing when it isn't in the market). */
+    rival?: { name: string; segment: SegmentId; units: number; demand: number };
   };
   /** Decisions as used (after carry-forward), for audit and rerun. */
   decisions: Record<string, FirmDecision>;

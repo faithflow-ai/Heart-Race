@@ -410,6 +410,8 @@ export const DEFAULT_SETTINGS = {
   scorecardWeights: SCORECARD_WEIGHTS,
   marketingBudget: MARKETING_BUDGET,
   startingCapital: FINANCE.startingCapital,
+  /** Market events: the round each starts (null = off). Missing = the default schedule in events.ts. */
+  events: {} as Partial<Record<"chip" | "rival" | "tariff", number | null>>,
 };
 export type GameSettings = typeof DEFAULT_SETTINGS;
 

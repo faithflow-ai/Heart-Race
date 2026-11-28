@@ -2,6 +2,7 @@
 import { Fragment, use, useCallback, useEffect, useState } from "react";
 import { api, fmtTime, money, timeLeft } from "@/components/client";
 import { AI, ROUNDS, SEGMENTS, type AiStyle } from "@/sim/config";
+import { EVENT_IDS, EVENT_META, eventSchedule, type EventId } from "@/sim/eventSchedule";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const ZONES = ["America/Los_Angeles", "America/Denver", "America/Chicago", "America/New_York"];
@@ -25,7 +26,7 @@ interface Overview {
   game: {
     id: string; name: string; code: string; status: string; current_round: number; deadline: string | null;
     deadline_weekday: number; deadline_time: string; timezone: string; start_at: string | null;
-    settings: { scorecardWeights: Record<string, number>; marketingBudget: { earnedBase: number; earnedRevenueShare: number; earnedFloor: number; earnedCapGrowth: number } };
+    settings: { scorecardWeights: Record<string, number>; marketingBudget: { earnedBase: number; earnedRevenueShare: number; earnedFloor: number; earnedCapGrowth: number }; events?: Partial<Record<EventId, number | null>> };
   };
   firms: Firm[];
   rounds: { round: number; processed_at: string; run_count: number }[];
@@ -291,6 +292,34 @@ function MarketRules({ g, onSave }: { g: Overview["game"]; onSave: (b: unknown) 
         <p><button onClick={() => onSave({ budget })}>Save budget rules</button></p>
         <p className="small muted">Fixed releases: {money(500_000)} in Round 1, {money(500_000)} in Round 2, {money(1_000_000)} in Round 3 to pace through the final round.</p>
       </div>
+      <MarketEvents g={g} onSave={onSave} />
+    </div>
+  );
+}
+
+/** Instructor: move or turn off each market event before its round opens. */
+function MarketEvents({ g, onSave }: { g: Overview["game"]; onSave: (b: unknown) => void }) {
+  const sched = eventSchedule(g.settings);
+  const [ev, setEv] = useState<Record<EventId, number | null>>(sched);
+  const open = g.current_round;
+  const lockedFor = (id: EventId) => sched[id] !== null && sched[id]! <= open;
+  return (
+    <div className="panel">
+      <h2 style={{ marginTop: 0 }}>Market events</h2>
+      <p className="small muted">Events run automatically and are announced on students&apos; Home page when their round opens (the chip shortage is also flagged one round early). You can move or turn off an event until its round opens. Exact sizes are in the rules reference (instructor only).</p>
+      <div className="grid3">
+        {EVENT_IDS.map((id) => (
+          <div key={id}>
+            <label>{EVENT_META[id].name}</label>
+            <select disabled={lockedFor(id)} value={ev[id] === null ? "off" : String(ev[id])} onChange={(e) => setEv({ ...ev, [id]: e.target.value === "off" ? null : Number(e.target.value) })}>
+              <option value="off">Off</option>
+              {[3, 4, 5, 6, 7].map((r) => <option key={r} value={r} disabled={r <= open && !lockedFor(id)}>{ROUNDS.names[r]}{r === EVENT_META[id].defaultRound ? " (default)" : ""}</option>)}
+            </select>
+            {lockedFor(id) && <p className="small muted">Already under way.</p>}
+          </div>
+        ))}
+      </div>
+      <p><button onClick={() => onSave({ events: ev })}>Save events</button></p>
     </div>
   );
 }

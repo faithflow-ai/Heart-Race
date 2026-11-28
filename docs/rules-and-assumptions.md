@@ -1,6 +1,6 @@
 # Heart Race: Rules and Assumptions (instructor reference)
 
-Last updated Nov 27, 2026 (economics update built, waiting for merge). This is the single place that records how the simulation works and why. Exact numbers come from the code (`src/sim/config.ts` for rules students can see, `src/sim/market.ts` for hidden buyer behavior, `src/sim/engine.ts` for the math).
+Last updated Nov 27, 2026 (market events built, waiting for merge). This is the single place that records how the simulation works and why. Exact numbers come from the code (`src/sim/config.ts` for rules students can see, `src/sim/market.ts` for hidden buyer behavior, `src/sim/engine.ts` for the math).
 
 **Who can see what.** Following Victor's principle, Learn lessons teach the idea and what it means in the sim, never what to do, and exact numbers stay instructor-only. The exceptions are rules Victor chose to publish so students can find them if they look (marked **Students: Start here**). The rest is marked **Instructor only** (hidden numbers) or **Students: on screen** (shown where they make the decision).
 
@@ -21,6 +21,8 @@ Last updated Nov 27, 2026 (economics update built, waiting for merge). This is t
 | Running out of capital | Capital never goes below zero. If it would, Vibe Electronics HQ lends the difference at 3% interest per round (charged to profit). The loan is repaid automatically from capital above $500K. Shown on the money rail, Review, Results and Top concerns | Students: on screen | Built |
 | Burn-rate warning | Shown from Round 3 if the marketing pot will run out before the Final round at the current pace | Students: on screen | Now |
 | Overhead | $150K per round, plus $40K per region entered | Students: Start here | Now |
+| Teams and joining | A student joins a team once with the class code. Only the instructor can move a student to another team (class screen) | Students: Join page | Now (Nov 28) |
+| Carried-forward steps | From Round 2, a Decisions step nobody has changed or confirmed this round shows "Carried forward, review it" (not ✓). Untouched choices still carry forward at the deadline | Students: Decisions, Home | Now (Nov 28) |
 
 **Why.** A new division of an electronics company launching 2 products. Round 1 is the tightest round (in testing the leanest firm got down to about $2.2M). Marketing runs about 9% to 17% of revenue, in line with real wearable brands (about 10% to 20%).
 
@@ -91,9 +93,30 @@ Last updated Nov 27, 2026 (economics update built, waiting for merge). This is t
 - Targets can change each round. Products still sell in dropped segments and count toward profit, but stop counting toward share. Victor decided this is fine (Nov 27).
 - **Grade.** Round weights: practice 0, Rounds 1 and 2 at 10% each, Rounds 3 to 6 at 15% each, Final 20%. The export shows each team's weighted score as a percent of the best student team's, then bands A 90+, B 80+, C 70+, D 60+. AI firms are ranked but never take a band.
 
-- **Research timing** (queued Nov 28): Competitor benchmark, Awareness tracking and Satisfaction survey can be bought from Round 2, since they report on products already on sale. The other paid studies open in Round 1, and the market survey is free in Practice only.
+- **Research timing** (Nov 28): Competitor benchmark, Awareness tracking and Satisfaction survey can be bought from Round 2, since they report on products already on sale. The other paid studies open in Round 1, and the market survey is free in Practice only.
 
-## 7. Testing notes
+## 7. Market events (instructor only)
+
+Built Nov 27, 2026, made stronger Nov 28 at Victor's request (market events pull request). Code: `src/sim/events.ts` (effects and sizes, server only) and `src/sim/eventSchedule.ts` (names and default rounds). Students see only a Market news item on Home when the round opens, with no numbers. The instructor can move or turn off each event under Market rules until its round opens.
+
+| Event | When (default) | What changes | Students see |
+|---|---|---|---|
+| Chip shortage | Rounds 4 and 5, flagged when Round 3 opens | Advanced chips +150% of their listed cost ($18 to about $45), mid chips +30%. Each firm's advanced-chip allocation is 35% of the advanced-chip units it sold in Round 3 (at least 4,000). Production beyond the allocation isn't built | News item; unit cost on Products includes the higher chip prices; a note if production was cut |
+| New rival launch | Round 5 on | "Zenra" (placeholder name), a newcomer outside the 8 firms. It targets one of the two segments where student teams sell the most, mainly in the region where they sell the most of it, and sells online elsewhere at 70% strength. Fit 0.95, awareness 90% in the main region (rising 8 points a round), reach 95%, never out of stock, priced 5% under the segment's expected price. **Price depends on the segment:** in feature-driven segments it matches cuts down to 78% of the expected price; in value segments (price sensitivity 1.8 or more: Budget, Businesses & Insurers) it only goes down to 92%, and buyers compare prices with it directly (attractiveness x (rival price / your price) ^ (1.5 x sensitivity), within 0.5 to 1.8). **Weakness:** one benefit the segment cares about that students' products there can truthfully claim; a true claim about it counts +1.0 (instead of +0.06). **Shelf squeeze:** partners in the main region drop up to 80% of reach to make room; $120K of trade promotion per product wins back half | News item naming the segment, the region and the weakness, and hinting whether Zenra can follow price cuts |
+| Tariff on imported parts | Round 6 on | 70% duty on the parts share of unit cost (everything except the $10 for assembly, packaging and the app), on every unit built, wherever it's sold | News item; unit cost on Products includes the tariff |
+
+- **AI rivals react to cost events.** The round a cost event starts, each AI rival passes on 80% to 120% (sharper rivals more) of its extra cost per unit, in dollars.
+- **The rival in reports.** Zenra shows up in the segment panels on Results as "Zenra (new entrant)".
+- **No separate event score.** Results do the grading. The instructor's team page has an **Event response** tab listing the responses each team used.
+- **What the testing showed** (`npm run event-check`: test team plus 7 AI rivals, 3 team styles x 4 market draws; average round score over the event's rounds, out of 100):
+
+| Event | Ignore | Partial | Strong | Notes |
+|---|---|---|---|---|
+| Chip shortage | 78.9 | 79.5 | 82.6 | Teams with advanced-chip products: 75.9 / 76.7 / 81.5 (strong +5.6). Strong = price for the chips you can get, plan within the allocation, shift promotion to other products, build some stock in Round 3. Partial = small price increase only |
+| New rival | 78.3 | 82.2 (claim the weak spot only) | 83.5 (+5.2) | Strong = claim the weak spot, more trade support in the main region, plus an 8% cut in value segments. More ads only: 78.6. Value segments: ignore 80.0, 8% cut 80.8, 20% cut 81.2, strong 85.0. Other segments: ignore 76.0, 8% cut 76.7, 20% cut 77.2, strong 81.3. Price cuts cost profit everywhere. Cutting the forecast hurt (stockouts) |
+| Tariff | 74.0 | 75.3 (flat 5%) | 78.1 | Value and mid-market teams: 73.8 / 75.3 / 80.6 (strong +6.8). Strong = pass on about 80% of the extra cost in dollars and keep production matched to demand. Premium teams barely move whatever they do (a small flat increase did best), because a cost event mainly moves the Financial part of the score (20%) |
+
+## 8. Testing notes
 
 - After the Nov 27 economics update (simulated class, 8 firms): late-round gross margin about 48-54%, operating margin about 25-34%, Round 1 operating margin about -2% (a realistic launch), leanest firm's capital about $1.7M. Moving all trade money into ads now costs about 5 points of the weighted score (was 1), and putting everything into trade costs about 7. Leaving goals blank now lowers the score.
 

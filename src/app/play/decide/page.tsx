@@ -480,7 +480,8 @@ function ProductCard({ p, committed, onRemove }: { p: ProductSpec; committed?: T
             <h3 style={{ marginTop: 0 }}>{p.briefSent || locked ? "Engineering quote" : "Cost estimate (updates as you edit)"}</h3>
             {locked ? (
               <div className="kv">
-                <div><b>Unit cost now</b> <span className="muted small">(after volume savings)</span></div><div><b>${committed!.unitCost.toFixed(2)}</b></div>
+                <div><b>Unit cost now</b> <span className="muted small">(after volume savings{(committed!.eventCost ?? 0) > 0 ? ", with market event costs" : ""})</span></div><div><b>${committed!.unitCost.toFixed(2)}</b></div>
+                {(committed!.eventCost ?? 0) > 0 && (<><div>Market event costs included (see Home)</div><div>+ ${committed!.eventCost!.toFixed(2)}</div></>)}
                 <div>Parts at today&apos;s prices</div><div>${parts.toFixed(2)}</div>
                 <div>Assembly, packaging, app</div><div>${assembly.toFixed(2)}</div>
               </div>

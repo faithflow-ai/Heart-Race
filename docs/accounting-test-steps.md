@@ -39,3 +39,33 @@ Use the Vercel preview link on the PR, or the live site after merging. The quick
 1. In Round 1, plan promotion on **Price and promotion** until almost all of the marketing budget is used.
 2. Open **Research**. "Marketing budget left this round, after planned promotion" matches the number on Home.
 3. Studies that cost more than what's left show a greyed-out Buy button and a note to lower planned promotion first.
+
+## 9. Carried-forward steps and leftover stock
+1. In the demo class, open **View as student** for a team (or sign in as a demo student) in Round 2 or later.
+2. On **Decisions**, steps nobody has changed this round show an amber ↻ and "Carried forward, review it", not a green ✓. Home's "Due this round" list says the same.
+3. Open one of those steps. An amber box says the choices were carried forward, with a **Looks right, keep it** button. Click it (as a student): the step turns ✓. Changing anything on the step does the same.
+4. In a class in Round 1 where a team has no product ready to sell, **Price and promotion** and **Forecast and production** show "Waiting on Products" instead of ✓.
+5. On **Forecast and production**, each row has a line "Units available to sell = in stock now + production". Set production so stock plus production is 1.5 times the forecast or more: a warning appears on the row ("You have N units in stock now and plan to make N more…") and in the step list.
+
+## 10. No raw codes
+1. On **Strategy and goals**, change the team color. On **More → Change log**, the entry says "changed the team color".
+2. A team whose ad claims overstate a product sees the claim names in its Results concerns (for example "GPS and training accuracy"), not short codes.
+
+## 11. Class screen refreshes after scoring
+1. As the instructor, on a class screen, click **Close and score [round] now**.
+2. Class results update right away, without reloading the page.
+
+## 12. Students can't switch teams
+1. Sign in as a student who has joined a team. Go to the Join page and enter the class code.
+2. It says "You're already on [team]… ask your instructor to move you", with no Join buttons for other teams.
+3. As the instructor, moving a student on the class screen still works.
+
+## 13. Start here shows the class's scoring weights
+1. As the instructor, change the scorecard weights under **Market rules** and save.
+2. As a student, open **Start here → Scoring**. The percentages match your new weights.
+
+## 14. The server checks the screens' rules
+Nothing to see on screen. The tests (`npm test`) check that edits sent outside the screens are refused: goals in Practice, markets before Round 1, parts the screen doesn't offer, sending a brief whose design breaks the rules (for example a color display with the Basic chip), a new product sent in as already accepted, and negative numbers.
+
+## 15. Autosave keeps the other changes
+Hard to trigger by hand: two teammates on the same product, one accepts the quote while the other changes a part. The second person's other edits still save, and the save message names the change that didn't save and why.
