@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { api, money } from "@/components/client";
 import { useTeam } from "@/components/TeamContext";
-import { ROUNDS, STUDIES, type StudyId } from "@/sim/config";
+import { ROUNDS, STUDIES, studyFromRound, type StudyId } from "@/sim/config";
 import type { StudyReport } from "@/sim/research";
 import { STUDY_INFO } from "@/sim/content";
 
@@ -13,7 +13,11 @@ export default function ResearchPage() {
   const [report, setReport] = useState<StudyReport | null>(null);
   const [err, setErr] = useState("");
   const bought = new Set(t.research.filter((r) => r.round === round).map((r) => r.study));
-  const left = t.budget.available - t.budget.research;
+  // Same "left" as Home and Decisions: available minus planned promotion and research already bought.
+  const left = t.budget.remaining;
+  // Room under this round's spending limit (promotion + research), from Round 1 on.
+  const limitRoom = round >= 1 ? t.budget.limit - t.budget.promotion - t.budget.research : Infinity;
+  const blocked = (cost: number) => cost > 0 && (cost > left ? "Not enough marketing budget left. Lower planned promotion on Price and promotion first." : cost > limitRoom ? "This would go over this round's spending limit (promotion plus research). Lower planned promotion on Price and promotion first." : "");
 
   async function buy(study: StudyId) {
     setErr("");
@@ -66,7 +70,7 @@ export default function ResearchPage() {
   return (
     <>
       <h1>Market research</h1>
-      <p className="muted">Studies are paid from the marketing budget and delivered right away. Purchases can't be undone. Marketing budget left this round: <b>{money(left)}</b>.</p>
+      <p className="muted">Studies are paid from the marketing budget and delivered right away. Purchases can't be undone. Marketing budget left this round, after planned promotion: <b>{money(left)}</b>.</p>
       {err && <div className="notice bad">{err}</div>}
       {t.viewAs && <div className="notice warn">Instructor preview: click <b>Preview</b> to see any study as this team would get it right now. Nothing is bought or charged.</div>}
       <div className="panel">
@@ -95,10 +99,13 @@ export default function ResearchPage() {
                     <button onClick={() => preview(s)}>Preview</button>
                   ) : bought.has(s) ? (
                     <span className="badge good">{STUDIES[s].cost ? "Bought this round" : "Received"}</span>
-                  ) : round === 0 && STUDIES[s].cost > 0 ? (
-                    <span className="badge" title="Your marketing budget starts in Round 1">Available from Round 1</span>
+                  ) : STUDIES[s].cost > 0 && round < studyFromRound(s) ? (
+                    <span className="badge" title={studyFromRound(s) > 1 ? "This study reports on products already on the market" : "Your marketing budget starts in Round 1"}>Available from {ROUNDS.names[studyFromRound(s)]}</span>
                   ) : (
-                    <button className={STUDIES[s].cost ? "" : "primary"} onClick={() => buy(s)} disabled={round > ROUNDS.final}>{STUDIES[s].cost ? "Buy" : "Get free survey"}</button>
+                    <>
+                      <button className={STUDIES[s].cost ? "" : "primary"} onClick={() => buy(s)} disabled={round > ROUNDS.final || !!blocked(STUDIES[s].cost)} title={blocked(STUDIES[s].cost) || undefined}>{STUDIES[s].cost ? "Buy" : "Get free survey"}</button>
+                      {blocked(STUDIES[s].cost) && <div className="small muted" style={{ maxWidth: 220, marginLeft: "auto" }}>{blocked(STUDIES[s].cost)}</div>}
+                    </>
                   )}
                 </td>
               </tr>

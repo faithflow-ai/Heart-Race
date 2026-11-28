@@ -41,6 +41,8 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
   const [o, setO] = useState<Overview | null>(null);
   const [msg, setMsg] = useState<{ kind: "good" | "bad"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // Bumped after every action so Class results reloads too (no page reload needed).
+  const [ver, setVer] = useState(0);
   const load = useCallback(() => api<Overview>(`/api/games/${id}`).then(setO).catch((e) => setMsg({ kind: "bad", text: e.message })), [id]);
   useEffect(() => {
     load();
@@ -53,6 +55,7 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
       await fn();
       setMsg({ kind: "good", text: ok });
       await load();
+      setVer((v) => v + 1);
     } catch (e) {
       setMsg({ kind: "bad", text: (e as Error).message });
     }
@@ -107,7 +110,7 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
         <p className="small muted">Rounds close and score on their own at each deadline once the deadline clock is on. <b>Close and score now</b> ends the open round early (for example to test) and opens the next one. <b>Re-run</b> recomputes the last scored round with the same decisions, after a fix. There is no tool to change a team&apos;s results.</p>
       </div>
 
-      <Dashboard id={id} />
+      <Dashboard id={id} ver={ver} />
 
       <div className="grid2">
         <Schedule g={g} onSave={(b) => patch(b)} />
@@ -431,7 +434,7 @@ interface Dash {
   }[];
 }
 
-function Dashboard({ id }: { id: string }) {
+function Dashboard({ id, ver }: { id: string; ver: number }) {
   const [d, setD] = useState<Dash | null>(null);
   const [round, setRound] = useState<number | null>(null);
   const [goalsFor, setGoalsFor] = useState<string | null>(null);
@@ -440,7 +443,7 @@ function Dashboard({ id }: { id: string }) {
       setD(x);
       setRound(x.rounds.length ? x.rounds[x.rounds.length - 1].round : null);
     });
-  }, [id]);
+  }, [id, ver]);
   if (!d) return null;
   const scored = d.rounds.filter((r) => r.round >= 1);
   const name = (fid: string) => d.firms.find((f) => f.id === fid);

@@ -40,7 +40,7 @@ export const GET = handle(async () => {
     guest: isGuest(user),
     // Class in progress: the guest can type in the fields to try them; nothing is saved.
     tryIt: isGuest(user) && !!(settingsOf(game) as unknown as { showcase?: { stopAfter?: number } }).showcase?.stopAfter,
-    game: { id: game.id, name: game.name, status: game.status, round: game.current_round, deadline: game.deadline, timezone: game.timezone },
+    game: { id: game.id, name: game.name, status: game.status, round: game.current_round, deadline: game.deadline, timezone: game.timezone, weights: settingsOf(game).scorecardWeights },
     firm: { id: firm.id, name: firm.name },
     members,
     rivals: firms.filter((f) => f.id !== firm.id).map((f) => ({ id: f.id, name: f.name })),

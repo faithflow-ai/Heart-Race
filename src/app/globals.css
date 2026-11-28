@@ -154,6 +154,9 @@ a.chip:hover { text-decoration: none; filter: brightness(0.97); }
 .dot.done { background: var(--mint); border-color: var(--mint); color: #fff; }
 .dot.attention { background: var(--amber); border-color: var(--amber); color: var(--navy); }
 .dot.locked { border-style: dashed; }
+.dot.carried { background: #fff; border-color: var(--amber); color: var(--navy); }
+.dot.waiting { border-style: dashed; border-color: var(--muted); }
+tr.subrow td { border-top: none; padding-top: 0; }
 
 /* Round tracker, pinned under the menu */
 .tracker { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; padding: 8px 24px; font-size: 13px; color: var(--muted); }

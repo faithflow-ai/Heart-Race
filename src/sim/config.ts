@@ -302,6 +302,8 @@ export const FINANCE = {
   exitFeeShare: 0.5,
   /** Capacity expansion is spread over this many rounds when scoring profit (amortization). */
   expansionAmortRounds: 4,
+  /** Lowest profit points on the Financial score: a loss scores below 0, down to this (a loss as big as the best firm's profit = -100). */
+  lossPointsFloor: -100,
 };
 
 // ---------------------------------------------------------------------------
@@ -335,12 +337,14 @@ export const STUDIES = {
   potential: { name: "Market potential", cost: 25_000 },
   price: { name: "Price willing to pay", cost: 30_000 },
   media: { name: "Media preferences", cost: 20_000 },
-  awareness: { name: "Awareness tracking", cost: 20_000 },
-  satisfaction: { name: "Satisfaction survey", cost: 20_000 },
-  competitors: { name: "Competitor benchmark", cost: 35_000 },
+  awareness: { name: "Awareness tracking", cost: 20_000, fromRound: 2 },
+  satisfaction: { name: "Satisfaction survey", cost: 20_000, fromRound: 2 },
+  competitors: { name: "Competitor benchmark", cost: 35_000, fromRound: 2 },
   partners: { name: "Channel partner survey", cost: 30_000 },
 } as const;
 export type StudyId = keyof typeof STUDIES;
+/** First round a study can be bought: studies about last round's market need products on sale first. */
+export const studyFromRound = (s: StudyId) => ("fromRound" in STUDIES[s] ? (STUDIES[s] as { fromRound: number }).fromRound : 1);
 
 // ---------------------------------------------------------------------------
 // Rounds and unlocks

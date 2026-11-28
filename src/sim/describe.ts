@@ -75,6 +75,7 @@ function componentName(field: string, v: unknown): string {
   if (comp) return comp.options[String(v)]?.name ?? String(v);
   return String(v);
 }
+const STEP_NAMES: Record<string, string> = { strategy: "Strategy and goals", products: "Products", markets: "Markets and channels", pricing: "Price and promotion", production: "Forecast and production" };
 const fromTo = (what: string, a: string, b: string) => `changed ${what} from ${a} to ${b}`;
 
 /** One readable sentence (without the person's name), e.g. "changed price of Product 1 in Europe from $99 to $89". */
@@ -89,6 +90,7 @@ export function describeChange(path: string, oldV: unknown, newV: unknown, names
     if (a === "targetRegions") return fromTo(label, list(oldV, REG), list(newV, REG));
     if (a === "posture") return fromTo(label, POSTURE[String(oldV ?? "")] ?? String(oldV), POSTURE[String(newV ?? "")] ?? String(newV));
     if (a === "positionMap") return "updated the positioning map";
+    if (a === "teamColor") return "changed the team color";
     if (a === "companyName") return oldV ? fromTo(label, text(oldV), text(newV)) : `named the company ${text(newV)}`;
     if (!oldV) return `wrote the ${label}: ${text(newV)}`;
     return `edited the ${label}: ${text(newV)}`;
@@ -101,6 +103,7 @@ export function describeChange(path: string, oldV: unknown, newV: unknown, names
     const kind = a === "revenue" ? "money" : "pct";
     return fromTo(GOAL_LABELS[a] ?? a, numText(oldV, kind), numText(newV, kind));
   }
+  if (head === "reviewed") return `reviewed ${STEP_NAMES[a ?? ""] ?? "a step"} and kept last round's choices`;
   if (head === "research") return `bought the study "${STUDIES[String(newV) as keyof typeof STUDIES]?.name ?? newV}"`;
   if (head === "ready") return newV ? "marked the team ready for this round" : "marked the team not ready";
   if (head === "reflection") return oldV ? `edited the round reflection: ${text(newV)}` : `wrote the round reflection: ${text(newV)}`;

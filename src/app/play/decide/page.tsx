@@ -2,7 +2,7 @@
 import { Fragment, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, fmtShort, money, num } from "@/components/client";
-import { STEPS, activeRegions, checklistItems, sellable, stepStatus } from "@/components/checklist";
+import { STEPS, activeRegions, capitalWarnings, checklistItems, excessStock, proFormaInputOf, sellable, stepMark, stepNote, stepStatus } from "@/components/checklist";
 import { SaveState, useTeam, type TeamData } from "@/components/TeamContext";
 import {
   CHANNELS,
@@ -32,7 +32,7 @@ import { PromoSummary } from "@/components/PromoSummary";
 import { PositionMapEditor } from "@/components/PositionMapEditor";
 import { Term } from "@/components/Glossary";
 import { TEAM_COLORS, TeamBadge, teamColor } from "@/components/team";
-import { proForma } from "@/sim/proforma";
+import { capitalCheck, proForma } from "@/sim/proforma";
 import { LEARN } from "@/sim/content";
 import { newProduct, quote, supportedClaims } from "@/sim/product";
 import type { FirmDecision, ProductSpec } from "@/sim/types";
@@ -44,6 +44,19 @@ const REGION_CHANNELS: Record<RegionId, ChannelId[]> = {
   apac: ["online", "marketplace", "mass", "electronics", "pharmacy", "specialty", "carrier", "bizdist"],
   latam: ["online", "marketplace", "mass", "electronics", "pharmacy", "carrier", "bizdist"],
 };
+
+/** Company capital warnings for one decision step (or all of them on Review). */
+function CapitalWarnings({ step }: { step?: "products" | "production" }) {
+  const { team } = useTeam();
+  const ws = capitalWarnings(team!).filter((w) => !step || w.step === step || w.step === "review");
+  if (!ws.length) return null;
+  return (
+    <div className="notice bad" role="alert">
+      <b>Company capital warning</b>
+      {ws.map((w, i) => <p key={i} style={{ margin: "4px 0 0" }}>{w.text}</p>)}
+    </div>
+  );
+}
 
 function Learn({ id }: { id: string }) {
   // Open the first time a student sees it; closed on later visits (remembered in this browser).
@@ -97,6 +110,31 @@ export default function DecidePage() {
   );
 }
 
+/** From Round 2 on: a step nobody has touched this round still holds last round's choices. */
+function KeepIt({ step }: { step: string }) {
+  const { team, reload } = useTeam();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const keep = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      await api("/api/team/decision", { method: "PATCH", body: { round: team!.game.round, ops: [{ path: `reviewed.${step}`, op: "set", value: true }] } });
+      await reload();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="notice warn row" style={{ alignItems: "center" }}>
+      <span style={{ flex: 1 }}><b>Carried forward from last round.</b> Nobody on your team has changed this step this round, so last round&apos;s choices will be used. Check they still fit, then change what you need or keep them.{err && <span className="neg"> {err}</span>}</span>
+      <button type="button" onClick={keep} disabled={busy}>{busy ? "Saving…" : "Looks right, keep it"}</button>
+    </div>
+  );
+}
+
 function Decide() {
   const { team } = useTeam();
   const sp = useSearchParams();
@@ -105,7 +143,7 @@ function Decide() {
   const over = round > ROUNDS.final;
   const steps = stepStatus(t);
   // Step 1 by default; from Round 2 on, open on the first step that needs attention.
-  const firstOpen = round >= 2 && !t.viewAs ? steps.find((x) => x.state === "attention" && x.id !== "review") : undefined;
+  const firstOpen = round >= 2 && !t.viewAs ? steps.find((x) => x.state === "attention" && x.id !== "review") ?? steps.find((x) => x.state === "carried") : undefined;
   const tab = sp.get("tab") ?? firstOpen?.id ?? "strategy";
   const idx = Math.max(0, STEPS.findIndex((x) => x.id === tab));
   const current = steps[idx];
@@ -119,11 +157,10 @@ function Decide() {
         <div className="steplist-head">{ROUNDS.names[Math.min(round, ROUNDS.final)]} decisions</div>
         {steps.map((x, i) => (
           <a key={x.id} href={`/play/decide?tab=${x.id}`} className={`step ${x.id === current.id ? "cur" : ""} ${x.state}`} aria-current={x.id === current.id ? "step" : undefined}>
-            <span className={`dot ${x.state}`}>{x.state === "done" ? "✓" : x.state === "attention" ? "!" : x.locked ? "" : i + 1}</span>
+            <span className={`dot ${x.state}`}>{stepMark(x) || (x.locked ? "" : i + 1)}</span>
             <span className="step-label">
               {i + 1}. {x.label}
-              {x.locked && <small>Opens in {x.opens}</small>}
-              {x.state === "attention" && <small>{x.issues} to check</small>}
+              {x.state !== "done" && <small>{stepNote(x)}</small>}
             </span>
           </a>
         ))}
@@ -140,6 +177,8 @@ function Decide() {
           </div>
         ) : (
           <fieldset className="plain" disabled={(t.viewAs && !t.tryIt) || over}>
+            {current.state === "carried" && <KeepIt step={current.id} />}
+            {current.state === "waiting" && <div className="notice info">This step needs {current.waiting} first. Finish that step, then come back here.</div>}
             {current.id === "strategy" && <Strategy />}
             {current.id === "products" && <Products />}
             {current.id === "markets" && <Markets />}
@@ -309,6 +348,7 @@ function Products() {
   return (
     <>
       <Learn id="products" />
+      <CapitalWarnings step="products" />
       <div className="notice info">
         Brief up to {PRODUCT_RULES.maxProductsAtLaunch} products now. A third product can be briefed by {ROUNDS.names[PRODUCT_RULES.thirdProductBriefRound]} to launch in {ROUNDS.names[PRODUCT_RULES.thirdProductBriefRound + 1]}.
         Each brief goes through three steps: <b>Draft</b> → <b>Send brief to engineering</b> (you get a quote) → <b>Accept quote</b> (the design locks and the fee is charged at the deadline).
@@ -702,6 +742,7 @@ function Production() {
   return (
     <>
       <Learn id="production" />
+      <CapitalWarnings step="production" />
       <div className="panel">
         <div className="row">
           <b>Factory capacity this round: {num(cap)} units</b>
@@ -712,6 +753,15 @@ function Production() {
           <div style={{ width: `${Math.min(100, usedPct * 100)}%`, background: usedPct > 1 + PRODUCTION.overtimeMax ? "var(--bad)" : usedPct > 1 ? "var(--warn)" : "var(--accent)" }} />
         </div>
         {usedPct > 1 && usedPct <= 1 + PRODUCTION.overtimeMax && <div className="notice warn">You're into overtime: units above capacity cost {Math.round(PRODUCTION.overtimeCostPremium * 100)}% more.</div>}
+        {(() => {
+          const cc = capitalCheck(proFormaInputOf(t));
+          if (t.game.round < 1) return null;
+          return (
+            <p className="small" style={{ margin: "8px 0 0" }}>
+              <b>Cost of making these units: {money(cc.production)}</b>, paid from company capital this round. Capital left for production after this round&apos;s fees: {money(Math.max(0, cc.beforeProduction))}.
+            </p>
+          );
+        })()}
         {usedPct > 1 + PRODUCTION.overtimeMax && <div className="notice bad">Over the limit. The factory can make at most {num(cap * (1 + PRODUCTION.overtimeMax))} units with overtime; production will be cut proportionally.</div>}
       </div>
       {prods.map((p) => (
@@ -728,14 +778,23 @@ function Production() {
                 const f = pl?.forecast ?? 0;
                 const supply = (pl?.production ?? 0) + stock;
                 const gap = f > 0 ? Math.abs(supply - f) / f : supply > 0 ? 1 : 0;
+                const ex = excessStock(stock, pl?.production ?? 0, f);
                 return (
-                  <tr key={r.id}>
-                    <td>{r.name}</td>
-                    <td className="num">{num(stock)}</td>
-                    <td style={{ width: 180 }}><NumIn value={pl?.forecast ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.forecast`, v ?? 0)} /></td>
-                    <td style={{ width: 180 }}><NumIn value={pl?.production ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.production`, v ?? 0)} /></td>
-                    <td>{gap > PRODUCTION.forecastGapWarning && <span className="badge warn">Stock + production is {Math.round(gap * 100)}% off forecast</span>}</td>
-                  </tr>
+                  <Fragment key={r.id}>
+                    <tr>
+                      <td>{r.name}</td>
+                      <td className="num">{num(stock)}</td>
+                      <td style={{ width: 180 }}><NumIn value={pl?.forecast ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.forecast`, v ?? 0)} /></td>
+                      <td style={{ width: 180 }}><NumIn value={pl?.production ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.production`, v ?? 0)} /></td>
+                      <td>{gap > PRODUCTION.forecastGapWarning && <span className="badge warn">Stock + production is {Math.round(gap * 100)}% off forecast</span>}</td>
+                    </tr>
+                    <tr className="subrow">
+                      <td colSpan={5} className="small muted">
+                        Units available to sell = {num(stock)} in stock now + {num(pl?.production ?? 0)} production = <b>{num(supply)}</b>
+                        {ex && <div className="notice warn small" style={{ margin: "6px 0 0" }}>{ex.charAt(0).toUpperCase() + ex.slice(1)}</div>}
+                      </td>
+                    </tr>
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -791,6 +850,7 @@ function Review() {
   return (
     <>
       <Learn id="review" />
+      <CapitalWarnings />
       <Checklist />
       <div className="grid2">
         <div className="panel">
@@ -835,7 +895,7 @@ function Review() {
             <span className="spacer" />
             <button onClick={project} disabled={busy}>{busy ? "Projecting…" : "Run projection"}</button>
           </div>
-          <p className="small muted">A different estimate from the projected profit and loss above: it runs the market model, assuming every rival repeats its last-round decisions. Real results will differ.</p>
+          <p className="small muted">A different estimate from the projected profit and loss above. The pro forma assumes you sell exactly your forecast; this runs the market model, where buyers choose among all firms. {t.game.round === 1 ? "Nobody has sold yet, so each rival is filled in with a typical launch plan." : "It assumes every rival repeats its last-round decisions."} Expect the two to differ: the gap is worth discussing. Real results will differ too.</p>
           {err && <div className="notice bad">{err}</div>}
           {proj && (
             <>
@@ -887,25 +947,11 @@ function Review() {
 function ProFormaPanel() {
   const { team } = useTeam();
   const t = team!;
-  const b = t.budget;
-  const pf = proForma({
-    round: t.game.round,
-    decision: t.decision,
-    unitCost: Object.fromEntries(t.committed.map((c) => [c.id, c.unitCost])),
-    sellable: sellable(t).map((p) => p.id),
-    regionsEntered: t.regionsEntered as Parameters<typeof proForma>[0]["regionsEntered"],
-    channelsOpen: t.channelsOpen as Parameters<typeof proForma>[0]["channelsOpen"],
-    committed: t.committed.map((c) => c.id),
-    capital: b.capital,
-    marketingAvailable: b.available,
-    capacity: b.capacity,
-    loan: b.loan,
-    inventory: t.inventory as Parameters<typeof proForma>[0]["inventory"],
-  });
+  const pf = proForma(proFormaInputOf(t));
   return (
     <div className="panel">
       <h3 style={{ marginTop: 0 }}>Projected profit and loss (<Term t="pro forma">pro forma</Term>)</h3>
-      <p className="small muted" style={{ marginTop: 0 }}><b>Based on your forecast and decisions, not a prediction of the market.</b> It assumes you sell exactly your forecast (up to the units you have), split evenly across each region&apos;s channels. It updates as you edit. After the round, Results shows projected vs. actual.</p>
+      <p className="small muted" style={{ marginTop: 0 }}><b>Based on your forecast and decisions, not a prediction of the market.</b> It assumes you sell exactly your forecast (up to the units you have), split evenly across each region&apos;s channels. Profit counts the cost of units you sell; units left over stay as inventory, but capital pays for every unit you make. It updates as you edit. After the round, Results shows projected vs. actual.</p>
       <div className="grid2">
         <table>
           <tbody>

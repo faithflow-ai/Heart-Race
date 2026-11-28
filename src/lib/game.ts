@@ -1,14 +1,16 @@
-import { AI, DEFAULT_SETTINGS, MARKETING_BUDGET, ROUNDS, STUDIES, TEAM_NAMES, UNLOCKS, type AiStyle, type GameSettings, type StudyId } from "@/sim/config";
+import { AI, DEFAULT_SETTINGS, MARKETING_BUDGET, ROUNDS, STUDIES, studyFromRound, TEAM_NAMES, UNLOCKS, type AiStyle, type GameSettings, type StudyId } from "@/sim/config";
 import { processRound, spendingLimit } from "@/sim/engine";
 import { cellPromo, emptyDecision, normalizeDecision, syncPromotion } from "@/sim/product";
 import { proForma } from "@/sim/proforma";
 import { generateStudy } from "@/sim/research";
 import { defaultAiLevel, runRound } from "@/sim/run";
 import type { FirmDecision, FirmMeta, FirmState, RoundResult } from "@/sim/types";
+import { aiDecide } from "@/sim/ai";
 import { creativeBoosts } from "./creative";
 import { HttpError, type User } from "./auth";
 import { newId, one, q } from "./db";
 import { nextDeadline } from "./time";
+import { checkOp } from "./validate";
 
 export interface GameRow {
   id: string;
@@ -185,44 +187,20 @@ export async function applyOps(g: GameRow, firmId: string, round: number, user: 
   const latest = await latestResult(g);
   const committed = new Set(Object.keys(latest?.state.firms[firmId]?.products ?? {}));
   const log: { path: string; old: unknown; new: unknown }[] = [];
+  // Each edit is checked and applied on its own: a refused edit doesn't drop the others.
+  const refused: { path: string; message: string }[] = [];
   for (const op of ops) {
-    const segs = op.path.split(".");
-    if (segs[0] === "research") throw new HttpError(400, "Buy research on the Research screen.");
-    if (segs[0] === "products" && segs[1]?.startsWith("#") && committed.has(segs[1].slice(1)) && LOCKED_FIELDS.has(segs[2] ?? "")) {
-      throw new HttpError(400, "Engineering has accepted this product, so its components are locked.");
-    }
-    if (segs[0] === "products" && segs[1]?.startsWith("#") && !committed.has(segs[1].slice(1))) {
-      const prod = data.products.find((x) => x.id === segs[1].slice(1));
-      const field = segs[2] ?? "";
-      if (prod && field === "commission" && op.value === true && !prod.briefSent) throw new HttpError(400, "Send the brief to engineering and get a quote before accepting it.");
-      if (prod && (prod.briefSent || prod.commission) && DESIGN_FIELDS.has(field)) throw new HttpError(400, "This brief is with engineering. Click \"Revise brief\" to change it.");
-    }
-    const { parent, key } = walk(data, segs);
-    const p = parent as Record<string | number, unknown>;
-    const kind = op.op ?? "set";
-    if (kind === "set") {
-      const old = p[key];
-      if (JSON.stringify(old) === JSON.stringify(op.value)) continue;
-      p[key] = op.value;
-      log.push({ path: op.path, old: old ?? null, new: op.value ?? null });
-    } else if (kind === "push") {
-      const arr = p[key] as unknown[];
-      if (!Array.isArray(arr)) throw new HttpError(400, "Bad path");
-      arr.push(op.value);
-      log.push({ path: op.path, old: null, new: op.value ?? null });
-    } else if (kind === "remove") {
-      const arr = p[key] as { id: string }[];
-      const id = String(op.value);
-      if (op.path === "products" && committed.has(id)) throw new HttpError(400, "Retire an accepted product instead of deleting it.");
-      const i = arr.findIndex((x) => x.id === id);
-      if (i >= 0) {
-        log.push({ path: `${op.path}.#${id}`, old: arr[i], new: null });
-        arr.splice(i, 1);
-        if (op.path === "products") delete (data.plan as Record<string, unknown>)[id];
-      }
+    try {
+      applyOne(data, op, round, committed, log);
+    } catch (e) {
+      if (!(e instanceof HttpError)) throw e;
+      refused.push({ path: op.path, message: e.message });
     }
   }
-  if (!log.length) return { data, changed: 0 };
+  if (!log.length) {
+    if (refused.length === ops.length && refused.length) throw new HttpError(400, refused[0].message);
+    return { data, changed: 0, refused };
+  }
   syncPromotion(data);
   await q("update decisions set data = $1, updated_at = now(), updated_by = $2 where firm_id = $3 and round = $4", [JSON.stringify(data), user.id, firmId, round]);
   for (const l of log) {
@@ -234,7 +212,52 @@ export async function applyOps(g: GameRow, firmId: string, round: number, user: 
     if (recent) await q("update change_log set new_value = $1, at = now() where id = $2", [JSON.stringify(l.new), recent.id]);
     else await q("insert into change_log (firm_id, round, user_id, path, old_value, new_value) values ($1,$2,$3,$4,$5,$6)", [firmId, round, user.id, l.path, JSON.stringify(l.old), JSON.stringify(l.new)]);
   }
-  return { data, changed: log.length };
+  return { data, changed: log.length, refused };
+}
+
+/** Check one edit against the screens' rules, then apply it to the draft and note it for the change log. */
+function applyOne(data: FirmDecision, op: Op, round: number, committed: Set<string>, log: { path: string; old: unknown; new: unknown }[]) {
+  const segs = op.path.split(".");
+  if (segs[0] === "research") throw new HttpError(400, "Buy research on the Research screen.");
+  if (segs[0] === "products" && segs[1]?.startsWith("#") && committed.has(segs[1].slice(1)) && LOCKED_FIELDS.has(segs[2] ?? "")) {
+    throw new HttpError(400, "Engineering has accepted this product, so its components are locked.");
+  }
+  if (segs[0] === "products" && segs[1]?.startsWith("#") && !committed.has(segs[1].slice(1))) {
+    const prod = data.products.find((x) => x.id === segs[1].slice(1));
+    const field = segs[2] ?? "";
+    if (prod && field === "commission" && op.value === true && !prod.briefSent) throw new HttpError(400, "Send the brief to engineering and get a quote before accepting it.");
+    if (prod && (prod.briefSent || prod.commission) && DESIGN_FIELDS.has(field)) throw new HttpError(400, "This brief is with engineering. Click \"Revise brief\" to change it.");
+  }
+  checkOp(op, { round, data, committed });
+  // "Looks right, keep it": recorded in the change log only.
+  if (segs[0] === "reviewed") {
+    log.push({ path: op.path, old: null, new: true });
+    return;
+  }
+  const { parent, key } = walk(data, segs);
+  const p = parent as Record<string | number, unknown>;
+  const kind = op.op ?? "set";
+  if (kind === "set") {
+    const old = p[key];
+    if (JSON.stringify(old) === JSON.stringify(op.value)) return;
+    p[key] = op.value;
+    log.push({ path: op.path, old: old ?? null, new: op.value ?? null });
+  } else if (kind === "push") {
+    const arr = p[key] as unknown[];
+    if (!Array.isArray(arr)) throw new HttpError(400, "Bad path");
+    arr.push(op.value);
+    log.push({ path: op.path, old: null, new: op.value ?? null });
+  } else if (kind === "remove") {
+    const arr = p[key] as { id: string }[];
+    const id = String(op.value);
+    if (op.path === "products" && committed.has(id)) throw new HttpError(400, "Retire an accepted product instead of deleting it.");
+    const i = arr.findIndex((x) => x.id === id);
+    if (i >= 0) {
+      log.push({ path: `${op.path}.#${id}`, old: arr[i], new: null });
+      arr.splice(i, 1);
+      if (op.path === "products") delete (data.plan as Record<string, unknown>)[id];
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -271,11 +294,13 @@ export async function buyStudy(g: GameRow, firmId: string, user: User, study: St
   const round = g.current_round;
   if (round < UNLOCKS.research) throw new HttpError(400, "Research isn't open yet.");
   if ("practiceOnly" in st && st.practiceOnly && round !== 0) throw new HttpError(400, "The free market survey is only offered in the practice round.");
+  if (st.cost > 0 && round < studyFromRound(study)) throw new HttpError(400, `${st.name} isn't available until ${ROUNDS.names[studyFromRound(study)]}: it reports on products already on the market.`);
   const { data } = await getDecision(firmId, round);
   if (data.research.includes(study)) throw new HttpError(400, "You already bought this study this round.");
   const latest = await latestResult(g);
   const b = budgetEstimate(g, latest, firmId, data);
-  if (st.cost > b.available - b.research) throw new HttpError(400, "Not enough marketing budget left for this study.");
+  if (st.cost > b.remaining) throw new HttpError(400, "Not enough marketing budget left for this study. Lower planned promotion on Price and promotion first.");
+  if (round >= 1 && st.cost > b.limit - b.promotion - b.research) throw new HttpError(400, "This study would go over this round's spending limit (promotion plus research). Lower planned promotion on Price and promotion first.");
   data.research.push(study);
   await q("update decisions set data = $1, updated_at = now(), updated_by = $2 where firm_id = $3 and round = $4", [JSON.stringify(data), user.id, firmId, round]);
   await q("insert into change_log (firm_id, round, user_id, path, old_value, new_value) values ($1,$2,$3,'research',null,$4)", [firmId, round, user.id, JSON.stringify(study)]);
@@ -392,6 +417,11 @@ export async function projection(g: GameRow, firms: FirmRow[], latest: RoundResu
   const metas = firms.map((f) => firmMeta(f, round));
   const decisions: Record<string, FirmDecision | null> = {};
   for (const f of metas) decisions[f.id] = f.id === firmId ? draft : (latest?.state.firms[f.id]?.lastDecision ?? null);
+  // Round 1: nobody has sold yet, so "repeat last round" would mean an empty market. Fill in each rival with a
+  // typical launch plan from the AI rivals' logic (a different seed, so it isn't the AI's actual move).
+  if (round === 1 && latest)
+    for (const f of metas)
+      if (f.id !== firmId) decisions[f.id] = aiDecide({ ...f, isAi: true }, { round, seed: g.seed + 999, state: latest.state, prevResult: latest, firms: metas });
   const res = processRound({ round, seed: g.seed + 999, firms: metas, prevState: latest?.state ?? null, prevResult: latest, decisions, settings: settingsOf(g), creativeBoost });
   const rep = res.reports[firmId];
   return { pnl: rep.pnl, supply: rep.supply, byProduct: rep.byProduct, notes: rep.notes, capacity: rep.capacity, budget: rep.budget };
