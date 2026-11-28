@@ -393,7 +393,7 @@ export type ScoreKey = keyof typeof SCORECARD_WEIGHTS;
 export const AI = {
   firmsPerMarket: 8,
   /** Default difficulty (0-10) by round; the console can override per firm. */
-  defaultLevelByRound: [4, 4, 4, 5, 5.5, 6.5, 7, 7.5],
+  defaultLevelByRound: [3, 3, 3.5, 4.5, 5.5, 6.5, 7, 7.5],
   styles: {
     premium: { name: "Premium differentiator" },
     lowcost: { name: "Low-cost leader" },

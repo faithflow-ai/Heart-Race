@@ -174,7 +174,7 @@ export default function Console({ params }: { params: Promise<{ id: string }> })
 
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>AI rivals</h2>
-        <p className="small muted">Level 0 to 10. Leave blank to follow the default ramp (about 4 early, rising to 7.5 by the final round). Change between rounds whenever you like.</p>
+        <p className="small muted">Level 0 to 10. Leave blank to follow the default ramp (about 3 early, rising to 7.5 by the final round). Change between rounds whenever you like.</p>
         <table>
           <thead><tr><th>Firm</th><th>Style</th><th>Level</th><th className="num">Level now</th><th className="num">Last score</th><th></th></tr></thead>
           <tbody>
