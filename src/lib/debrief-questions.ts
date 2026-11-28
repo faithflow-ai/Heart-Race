@@ -10,6 +10,10 @@ export const DEBRIEF_QUESTIONS: Record<string, string[]> = {
     "Which segment did your team set out to win? Did the buyers there choose you?",
     "Where buyers wanted your product but bought someone else's, what got in the way: stock, stores, awareness or price?",
   ],
+  launch: [
+    "Where does your team's launch look most different from this rival's? What did your team know when it chose?",
+    "Which of these choices could your team have checked with research before the deadline?",
+  ],
   pushPull: [
     "How did your team split promotion between buyers (pull) and channel partners (push)? Why that split?",
     "What do partners need from a brand before they push it to shoppers?",
