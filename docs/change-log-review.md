@@ -160,7 +160,7 @@ Added Nov 27 after Victor picked Pulse (look book Part 2):
 - [P2] App-wide – Empty states that teach (e.g., no research yet points to where most teams start, without telling them what to do)
 - [P2] Home – Pre-deadline warnings for gaps (e.g., $0 promotion in a target region, production far from forecast)
 - [P3] App-wide – Pulse line used sparingly: loading animation, login divider, round-scored moment
-- [P3] Instructor – Class heatmap of who's ready, team badges on the dashboard
+- [P3] Instructor – Class heatmap of who's ready, team badges on the dashboard **Built in PR 11 (Nov 27), waiting for merge.**
 - [—] Dark mode: not planned (Claude's recommendation)
 
 Added Nov 27, second round (Victor's notes; look book items 6 to 8):
@@ -210,7 +210,7 @@ Tested by having one team play variations of the same strategy against 7 rivals,
 
 ## Later batch (queued Nov 23, not in the current build)
 
-- [P2] Instructor – Unusual activity flags: the class screen flags agent-like patterns for each team and says why each one was flagged, with an optional email to the instructor once email sending is set up. Examples: every input entered within seconds, only one teammate ever active, rapid bursts of edits at identical speed, edits at odd hours, no round reflection. Wording must make clear a flag is a prompt to look closer, not proof that a student used an AI agent
+- [P2] Instructor – Unusual activity flags: the class screen flags agent-like patterns for each team and says why each one was flagged, with an optional email to the instructor once email sending is set up. Examples: every input entered within seconds, only one teammate ever active, rapid bursts of edits at identical speed, edits at odd hours, no round reflection. Wording must make clear a flag is a prompt to look closer, not proof that a student used an AI agent. **Built in PR 11 (Nov 27), waiting for merge** (email to instructor waits for email setup).
 - [P2] Instructor – Showcase class for faculty peers: a fully played class (Practice through the Final round) that colleagues in the business school can walk through to see what students do, what the results look like and whether the logic makes sense. A few teams with clearly different strategies; every input, report, result, research study, creative submission (placeholder links) and reflection filled in. Colleagues get a read-only guest login so they can browse as the instructor or as any team without changing anything. Include a short step-by-step guided tour document. Victor wants to test PR 4 first (queued Nov 23). Victor said go Nov 23. **Built in PR 5 (Nov 23), waiting for merge.**
 
 ---
@@ -240,3 +240,11 @@ Tested by having one team play variations of the same strategy against 7 rivals,
 - [NOTE] Research reports: co-design the contents of all 9 studies (Claude to draft an outline for Victor's review)
 - [NOTE] Learn tab: write the lessons for each round **Built in PR 4 (Nov 23), waiting for merge.**
 - [NOTE] App-wide cosmetic / look-and-feel changes (Victor to provide details)
+
+## Nov 27-28: Market events (Victor said go Nov 27; **built in PR 12, waiting for merge**)
+
+- [DONE] Chip shortage (Rounds 4 and 5, flagged when Round 3 opens), new rival launch (Round 5 on), tariff on imported parts (Round 6 on). Market news on students' Home page. Instructor can move or turn off each event. Event response tab for each team. Response rubric: Drafts/6_Market_Events_Response_Rubric.md
+- [DONE] (Victor, Nov 28) Whether a price cut against the rival is a good answer depends on the segment and product. In a value segment (buyers driven by price), buyers compare prices with the rival directly and the rival can't follow a measured cut. In segments that buy on features and brand, the rival matches cuts. The Event response card rates a measured cut for a value product in a value segment as a medium lever.
+- [DONE] (Victor approved Nov 28) Keep the hidden buyer model on the server. The student results data now sends only the 0-100 fit and price appeal ratings the report shows. The engine's internal multipliers are no longer sent. Checked the other student pages and data: the rest only reveal what a team's purchased studies show.
+- [NOTE] Victor asked whether students can be stopped from opening browser developer tools. No: any website can be inspected. The protection is never sending hidden numbers to the browser (done above).
+- [DONE] (Victor said go Nov 28) Events hit harder, so a strong response beats ignoring by about 5 to 7 points for the teams each event affects. Spreads are in the rules reference, section 7.

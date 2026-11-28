@@ -18,7 +18,9 @@ export interface TeamData {
   decision: FirmDecision;
   updatedAt: string | null;
   budget: { carried: number; release: number; earned: number; available: number; research: number; promotion: number; remaining: number; futureReleases: number; limit: number; loan: number; capital: number; capacity: number };
-  committed: { id: string; launchRound: number; retired: boolean; unitCost: number }[];
+  committed: { id: string; launchRound: number; retired: boolean; unitCost: number; eventCost?: number }[];
+  /** Market event news for this round (and early warnings). */
+  news?: import("@/sim/events").NewsItem[];
   regionsEntered: Record<string, string>;
   channelsOpen: Record<string, string[]>;
   inventory: Record<string, Record<string, number>>;

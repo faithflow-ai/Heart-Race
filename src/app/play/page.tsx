@@ -70,6 +70,19 @@ export default function TeamHome() {
         </div>
       </div>
 
+      {(t.news ?? []).length > 0 && (
+        <div className="panel" style={{ borderLeft: "4px solid var(--pulse)" }}>
+          <h2 style={{ marginTop: 0 }}>Market news</h2>
+          {(t.news ?? []).map((n, i) => (
+            <div key={i} style={{ marginBottom: 10 }}>
+              <b>{n.title}</b> <span className={`badge ${n.when === "now" ? "warn" : ""}`}>{n.when === "now" ? "This round" : "Expected next round"}</span>
+              <p style={{ margin: "4px 0 0" }}>{n.body}</p>
+            </div>
+          ))}
+          <p className="small muted" style={{ marginBottom: 0 }}>How your team responds is up to you. See the Learn tab for the ideas behind it.</p>
+        </div>
+      )}
+
       <div className="grid2">
         <div className="panel">
           <h2 style={{ marginTop: 0 }}>Due this round</h2>
