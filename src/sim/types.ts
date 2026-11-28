@@ -263,6 +263,8 @@ export interface RoundResult {
     demand: Record<SegmentId, Record<RegionId, number>>;
     unitsByFirmSegment: Record<string, Partial<Record<SegmentId, number>>>;
     pricesByFirm: Record<string, { productId: string; name: string; tier: Tier; region: RegionId; price: number }[]>;
+    /** Market event: the outside rival's units in its segment (missing when it isn't in the market). */
+    rival?: { name: string; segment: SegmentId; units: number; demand: number };
   };
   /** Decisions as used (after carry-forward), for audit and rerun. */
   decisions: Record<string, FirmDecision>;

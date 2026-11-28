@@ -38,9 +38,15 @@ export const EVENT_RULES = {
     brand: "Zenra",
     /** How well the rival's product fits its segment (0..1). */
     fit: 0.9,
-    /** Its price versus what the segment expects. It matches price cuts down to the floor. */
+    /** Its price versus what the segment expects. It matches price cuts down to a floor... */
     priceVsRef: 0.95,
+    /** ...which is low in segments that buy on brand and features (a price cut there just gets matched)... */
     priceFloor: 0.78,
+    /** ...but high in value segments (price sensitivity at or above valueSensitivity): its costs don't let it follow a measured cut. */
+    valuePriceFloor: 0.92,
+    valueSensitivity: 1.8,
+    /** In a value segment, attractiveness is multiplied by (rival price / your price) ^ (sensitivity x this). */
+    valuePriceWeight: 1.5,
     /** Awareness in the main region the first round, rising each round after. */
     awareness: 0.8,
     awarenessGrowth: 0.08,
@@ -76,6 +82,16 @@ export function chipAllocation(prev: RoundResult | null, firmId: string): number
   let sold = 0;
   for (const p of Object.values(fs?.products ?? {})) if (p.spec.chip === "advanced") sold += rep?.byProduct[p.spec.id]?.units ?? 0;
   return Math.max(EVENT_RULES.chip.allocationMin, Math.round((sold * EVENT_RULES.chip.allocationShare) / 500) * 500);
+}
+
+/** True when the rival's segment buys mainly on price: there a measured price cut is a strong answer. */
+export function isValueSegment(seg: SegmentId): boolean {
+  return SEGMENT_PROFILES[seg].priceSensitivity >= EVENT_RULES.rival.valueSensitivity;
+}
+
+/** The lowest price (as a share of the segment's expected price) the rival will match down to. */
+export function rivalFloor(seg: SegmentId): number {
+  return isValueSegment(seg) ? EVENT_RULES.rival.valuePriceFloor : EVENT_RULES.rival.priceFloor;
 }
 
 export interface ActiveEvents {
@@ -210,7 +226,7 @@ export function newsFor(round: number, seed: number, firms: FirmMeta[], latest: 
       body:
         `${EVENT_RULES.rival.brand}, a well-funded newcomer, ${ev.rival.roundsIn === 0 ? "has launched" : "is selling"} a product aimed squarely at ${segName(v.segment)}, ` +
         `led by a big push in ${regionName(v.region)} and sold online elsewhere. Early reviews praise the design and the price, which sits a little under what these buyers usually pay. ` +
-        `${EVENT_RULES.rival.brand} says it will match competitors' price cuts. Reviewers' one complaint: ${weaknessLine(v.weakness)} ` +
+        `${isValueSegment(v.segment) ? `Analysts say ${EVENT_RULES.rival.brand}'s price is already close to its cost.` : `${EVENT_RULES.rival.brand} says it will match competitors' price cuts.`} Reviewers' one complaint: ${weaknessLine(v.weakness)} ` +
         `Retail partners are making shelf space for the newcomer.`,
     });
   }
@@ -330,6 +346,8 @@ export function eventResponses(firmId: string, results: Record<number, RoundResu
       const targetsNow = d?.strategy.targetSegments ?? [];
       const targetsBefore = b?.strategy.targetSegments ?? [];
       const dropped = targetsBefore.includes(v.segment) && !targetsNow.includes(v.segment);
+      // In a value segment, with a value product (Good tier, or built for this segment), a measured price cut is a strong answer.
+      const valueFight = isValueSegment(v.segment) && (d?.products ?? []).some((p) => inSeg.has(p.id) && (p.tier === "good" || p.targetSegment === v.segment));
       out.push({
         id: "rival",
         name: `${EVENT_RULES.rival.name}: ${segName(v.segment)}, mainly ${regionName(v.region)}`,
@@ -340,7 +358,9 @@ export function eventResponses(firmId: string, results: Record<number, RoundResu
               { label: `More trade support in ${regionName(v.region)}`, strength: "strong", used: tradeR(nowC) > tradeR(befC) * 1.1 + 1, detail: `$${Math.round(tradeR(befC)).toLocaleString()} to $${Math.round(tradeR(nowC)).toLocaleString()}` },
               { label: "More awareness ads in the segment", strength: "medium", used: sum(nowC, "ads") > sum(befC, "ads") * 1.1 + 1, detail: `$${Math.round(sum(befC, "ads")).toLocaleString()} to $${Math.round(sum(nowC, "ads")).toLocaleString()}` },
               { label: "Moved effort to another segment", strength: "medium", used: dropped, detail: dropped ? "Dropped the segment from its targets" : "No" },
-              { label: "Cut price", strength: "weak", used: (priceChange ?? 0) < -0.03, detail: priceChange === null ? "No earlier price" : `Average price ${pct(priceChange)}` },
+              valueFight
+                ? { label: "Measured price cut (value segment, value product)", strength: "medium", used: (priceChange ?? 0) < -0.03 && (priceChange ?? 0) > -0.2, detail: priceChange === null ? "No earlier price" : `Average price ${pct(priceChange)}${(priceChange ?? 0) <= -0.2 ? " (deep cut: margin given away)" : ""}` }
+                : { label: "Cut price", strength: "weak", used: (priceChange ?? 0) < -0.03, detail: priceChange === null ? "No earlier price" : `Average price ${pct(priceChange)} (the rival matches cuts in this segment)` },
               { label: "Adjusted the forecast", strength: "small", used: (fcChange ?? 0) < -0.03, detail: fcChange === null ? "No earlier forecast" : `Forecast ${pct(fcChange)}` },
             ]
           : [{ label: `Not in ${segName(v.segment)}`, strength: "small", used: true, detail: "This team wasn't exposed to the rival" }],

@@ -8,12 +8,12 @@
 import { aiDecide } from "../src/sim/ai";
 import { makeAiFirms, runRound } from "../src/sim/run";
 import { DEFAULT_SETTINGS, type RegionId } from "../src/sim/config";
-import { EVENT_RULES, eventUnitCost, eventsForRound, type EventId } from "../src/sim/events";
+import { EVENT_RULES, eventUnitCost, eventsForRound, isValueSegment, type EventId } from "../src/sim/events";
 import { SEGMENT_PROFILES } from "../src/sim/market";
 import { supportedClaims, unitCostAt } from "../src/sim/product";
 import type { FirmDecision, FirmMeta, GameState, RoundResult } from "../src/sim/types";
 
-type Mode = "none" | "partial" | "strong" | "pricewar";
+type Mode = "none" | "partial" | "strong" | "pricewar" | "pricecut";
 const SEEDS = [1, 2, 3, 4];
 const STYLES: { style: FirmMeta["aiStyle"]; slot: number }[] = [
   { style: "premium", slot: 0 },
@@ -66,7 +66,10 @@ function respond(ev: EventId, mode: Mode, d: FirmDecision, state: GameState | nu
     const mine = cells.filter((x) => spec(x.pid)?.targetSegment === v.segment);
     // Baseline: a team that doesn't talk about the rival's weak spot.
     if (mode !== "strong") for (const p of d.products) if (spec(p.id)?.targetSegment === v.segment) p.claims = p.claims.filter((c) => c !== v.weakness);
-    if (mode === "pricewar") for (const x of mine) x.c.price = Math.round(x.c.price * 0.85);
+    // Price moves happen once, when the rival arrives (prices carry forward after that).
+    if (round === 5 && mode === "pricewar") for (const x of mine) x.c.price = Math.round(x.c.price * 0.8);
+    if (round === 5 && mode === "pricecut") for (const x of mine) x.c.price = Math.round(x.c.price * Number(process.env.CUT ?? 0.92));
+    if (round === 5 && mode === "strong" && isValueSegment(v.segment)) for (const x of mine) x.c.price = Math.round(x.c.price * Number(process.env.CUT ?? 0.92));
     if (mode === "partial") for (const x of mine) for (const m of ["digital", "search", "traditional"] as const) x.c.media[m] = Math.round(x.c.media[m] * 1.3);
     if (mode === "strong") {
       for (const p of d.products) {
@@ -152,11 +155,13 @@ function play(ev: EventId, mode: Mode, seed: number, style: FirmMeta["aiStyle"],
 
 const WINDOW: Record<EventId, number[]> = { chip: [4, 5], rival: [5, 6, 7], tariff: [6, 7] };
 for (const ev of (process.env.EV ? [process.env.EV] : ["chip", "rival", "tariff"]) as EventId[]) {
-  const modes: Mode[] = ev === "rival" ? ["none", "partial", "pricewar", "strong"] : ["none", "partial", "strong"];
+  const modes: Mode[] = ev === "rival" ? ["none", "partial", "pricecut", "pricewar", "strong"] : ["none", "partial", "strong"];
   console.log(`\n=== ${EVENT_RULES[ev].name} (rounds ${WINDOW[ev].join(", ")}) ===`);
   const rowsOut: Record<Mode, { score: number[]; profit: number[] }> = {} as never;
   const perStyle: string[] = [];
   for (const m of modes) rowsOut[m] = { score: [], profit: [] };
+  // For the rival: split results by whether it went after a value (price-driven) segment.
+  const split: Record<"value" | "other", Record<string, number[]>> = { value: {}, other: {} };
   for (const st of STYLES.filter((x) => !process.env.ONLY || process.env.ONLY.split(":")[0] === x.style))
     for (const seed of SEEDS.filter((x) => !process.env.ONLY || Number(process.env.ONLY.split(":")[1]) === x)) {
       const line: string[] = [];
@@ -167,11 +172,18 @@ for (const ev of (process.env.EV ? [process.env.EV] : ["chip", "rival", "tariff"
         rowsOut[m].score.push(sc);
         rowsOut[m].profit.push(pr);
         line.push(`${m} ${sc.toFixed(1)}`);
+        if (ev === "rival" && rival) ((split[isValueSegment(rival.segment) ? "value" : "other"][m] ??= []).push(sc));
         if (m === "strong" && ev === "rival" && rival) line.push(`[${rival.segment}/${rival.region}/${rival.weakness}]`);
       }
       perStyle.push(`  ${st.style.padEnd(8)} seed ${seed}: ${line.join("  ")}`);
     }
   console.log(perStyle.join("\n"));
   const avg = (xs: number[]) => xs.reduce((a, x) => a + x, 0) / xs.length;
+  if (ev === "rival")
+    for (const k of ["value", "other"] as const) {
+      const n = split[k].none?.length ?? 0;
+      if (!n) continue;
+      console.log(`  ${k === "value" ? "VALUE SEGMENTS" : "OTHER SEGMENTS"} (${n} runs): ` + modes.map((m) => `${m} ${avg(split[k][m]).toFixed(1)}`).join("  "));
+    }
   for (const m of modes) console.log(`  AVERAGE ${m.padEnd(9)} score ${avg(rowsOut[m].score).toFixed(1)}  profit over window $${(avg(rowsOut[m].profit) / 1e6).toFixed(2)}M  (vs none ${(avg(rowsOut[m].score) - avg(rowsOut.none.score)).toFixed(1)} pts)`);
 }

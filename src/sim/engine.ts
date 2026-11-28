@@ -25,7 +25,7 @@ import { AWARENESS, CAMPAIGN, CHANNEL_PUSH, DEMAND_MODEL, REGION_PROFILES, SATIS
 import { cellPromo, claimIsTrue, emptyMedia, normalizeDecision, quote, regionIds, specProblems, unitCostAt } from "./product";
 import { mulberry32, hashString } from "./rng";
 import { fit } from "./fit";
-import { EVENT_RULES, eventSchedule, eventUnitCost, eventsForRound, type ActiveEvents } from "./events";
+import { EVENT_RULES, eventSchedule, eventUnitCost, eventsForRound, isValueSegment, rivalFloor, type ActiveEvents } from "./events";
 
 /** Row owner for the event rival (not a firm in the class). */
 export const RIVAL_ID = "__event_rival";
@@ -557,13 +557,19 @@ export function processRound(input: ProcessInput): RoundResult {
         const ref = refPrice(v.segment, r);
         const cell = rows.filter((x) => x.segment === v.segment && x.region === r);
         const lowest = cell.length ? Math.min(...cell.map((x) => x.price)) : Infinity;
-        const price = Math.max(ref * R.priceFloor, Math.min(ref * R.priceVsRef, lowest));
+        const price = Math.max(ref * rivalFloor(v.segment), Math.min(ref * R.priceVsRef, lowest));
         const aw = Math.min(0.9, (R.awareness + R.awarenessGrowth * v.roundsIn) * (main ? 1 : R.otherRegions));
         const pf = priceFactor(v.segment, r, price);
         const attr = Math.pow(R.fit, DEMAND_MODEL.fitPower) * pf * Math.pow(DEMAND_MODEL.awarenessFloor + aw, DEMAND_MODEL.awarenessPower) * R.claimFactor;
         const row: ShareRow = { productId: RIVAL_ID, segment: v.segment, region: r, fit: R.fit, priceFactor: pf, awareness: aw, availability: R.availability * (main ? 1 : R.otherRegions), claimFactor: R.claimFactor, satisfactionFactor: 1, attractiveness: attr, demandUnits: 0, units: 0, share: 0, price };
         rows.push(row);
         rowFirm.set(row, RIVAL_ID);
+        // In a value segment, buyers compare price against the rival directly: undercutting it wins buyers,
+        // being dearer loses them. (Elsewhere they compare features and brand, and the rival matches cuts.)
+        if (isValueSegment(v.segment)) {
+          const k = SEGMENT_PROFILES[v.segment].priceSensitivity * R.valuePriceWeight * (main ? 1 : R.otherRegions);
+          for (const x of cell) x.attractiveness *= Math.max(0.5, Math.min(1.8, Math.pow(price / x.price, k)));
+        }
       }
     }
 
@@ -899,7 +905,11 @@ export function processRound(input: ProcessInput): RoundResult {
     }
   }
 
-  return { round, state, reports, scores, market: { demand, unitsByFirmSegment, pricesByFirm }, decisions };
+  const rivalRows = rows.filter((x) => rowFirm.get(x) === RIVAL_ID);
+  const rival = ev.rival && rivalRows.length
+    ? { name: EVENT_RULES.rival.brand, segment: ev.rival.segment, units: Math.round(rivalRows.reduce((a, x) => a + x.units, 0)), demand: Math.round(rivalRows.reduce((a, x) => a + x.demandUnits, 0)) }
+    : undefined;
+  return { round, state, reports, scores, market: { demand, unitsByFirmSegment, pricesByFirm, ...(rival ? { rival } : {}) }, decisions };
 }
 
 function round1(n: number) {
