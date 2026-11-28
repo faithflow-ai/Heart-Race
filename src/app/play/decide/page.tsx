@@ -32,7 +32,7 @@ import { PromoSummary } from "@/components/PromoSummary";
 import { PositionMapEditor } from "@/components/PositionMapEditor";
 import { Term } from "@/components/Glossary";
 import { TEAM_COLORS, TeamBadge, teamColor } from "@/components/team";
-import { proForma } from "@/sim/proforma";
+import { capitalCheck, proForma } from "@/sim/proforma";
 import { LEARN } from "@/sim/content";
 import { newProduct, quote, supportedClaims } from "@/sim/product";
 import type { FirmDecision, ProductSpec } from "@/sim/types";
@@ -726,6 +726,15 @@ function Production() {
           <div style={{ width: `${Math.min(100, usedPct * 100)}%`, background: usedPct > 1 + PRODUCTION.overtimeMax ? "var(--bad)" : usedPct > 1 ? "var(--warn)" : "var(--accent)" }} />
         </div>
         {usedPct > 1 && usedPct <= 1 + PRODUCTION.overtimeMax && <div className="notice warn">You're into overtime: units above capacity cost {Math.round(PRODUCTION.overtimeCostPremium * 100)}% more.</div>}
+        {(() => {
+          const cc = capitalCheck(proFormaInputOf(t));
+          if (t.game.round < 1) return null;
+          return (
+            <p className="small" style={{ margin: "8px 0 0" }}>
+              <b>Cost of making these units: {money(cc.production)}</b>, paid from company capital this round. Capital left for production after this round&apos;s fees: {money(Math.max(0, cc.beforeProduction))}.
+            </p>
+          );
+        })()}
         {usedPct > 1 + PRODUCTION.overtimeMax && <div className="notice bad">Over the limit. The factory can make at most {num(cap * (1 + PRODUCTION.overtimeMax))} units with overtime; production will be cut proportionally.</div>}
       </div>
       {prods.map((p) => (
