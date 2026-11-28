@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { api, money } from "@/components/client";
 import { useTeam } from "@/components/TeamContext";
-import { ROUNDS, STUDIES, type StudyId } from "@/sim/config";
+import { ROUNDS, STUDIES, studyFromRound, type StudyId } from "@/sim/config";
 import type { StudyReport } from "@/sim/research";
 import { STUDY_INFO } from "@/sim/content";
 
@@ -95,8 +95,8 @@ export default function ResearchPage() {
                     <button onClick={() => preview(s)}>Preview</button>
                   ) : bought.has(s) ? (
                     <span className="badge good">{STUDIES[s].cost ? "Bought this round" : "Received"}</span>
-                  ) : round === 0 && STUDIES[s].cost > 0 ? (
-                    <span className="badge" title="Your marketing budget starts in Round 1">Available from Round 1</span>
+                  ) : STUDIES[s].cost > 0 && round < studyFromRound(s) ? (
+                    <span className="badge" title={studyFromRound(s) > 1 ? "This study reports on products already on the market" : "Your marketing budget starts in Round 1"}>Available from {ROUNDS.names[studyFromRound(s)]}</span>
                   ) : (
                     <button className={STUDIES[s].cost ? "" : "primary"} onClick={() => buy(s)} disabled={round > ROUNDS.final}>{STUDIES[s].cost ? "Buy" : "Get free survey"}</button>
                   )}

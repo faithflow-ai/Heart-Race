@@ -31,6 +31,7 @@ import type {
   FirmReport,
   FirmState,
   GameState,
+  InventoryLot,
   PnL,
   ProductSpec,
   PromoResult,
@@ -310,6 +311,7 @@ export function processRound(input: ProcessInput): RoundResult {
             if (left > 0) {
               const uc = unitCostAt(ps.quotedUnitCost, ps.cumUnits, round, ps.briefedRound);
               pnl.clearanceRevenue += left * uc * PRODUCTION.clearanceRecovery;
+              pnl.cogs += (lots ?? []).reduce((a, l) => a + l.units * (l.cost ?? uc), 0);
               notes.push(`${Math.round(left).toLocaleString()} units of ${ps.spec.name} left in ${regionName(r)} were cleared at a discount when you exited.`);
             }
             if (fs.inventory[ps.spec.id]) fs.inventory[ps.spec.id][r] = [];
@@ -540,6 +542,19 @@ export function processRound(input: ProcessInput): RoundResult {
   }
 
   // ---- 3. Production, supply and sales ----------------------------------
+  /** Take units from the oldest lots first; returns what those units cost to make. */
+  const takeFromLots = (lots: InventoryLot[], n: number, fallbackCost: number) => {
+    let left = n;
+    let cost = 0;
+    for (const l of lots) {
+      const t = Math.min(l.units, left);
+      l.units -= t;
+      left -= t;
+      cost += t * (l.cost ?? fallbackCost);
+      if (left <= 0) break;
+    }
+    return cost;
+  };
   const unitsByFirmSegment: Record<string, Partial<Record<SegmentId, number>>> = {};
   for (const f of firms) {
     const fs = state.firms[f.id];
@@ -585,31 +600,26 @@ export function processRound(input: ProcessInput): RoundResult {
         const q = producedMap[`${pid}|${r}`] ?? 0;
         pProduced += q;
         const lots = (fs.inventory[pid][r] ??= []);
-        if (q > 0) lots.push({ units: q, age: 0 });
+        if (q > 0) lots.push({ units: q, age: 0, cost: uc });
         const stock = lots.reduce((a, l) => a + l.units, 0);
         const myRows = rows.filter((x) => x.productId === pid && x.region === r && rowFirm.get(x) === f.id);
         const want = myRows.reduce((a, x) => a + x.demandUnits, 0);
         const sold = Math.min(stock, Math.floor(want));
         const ratio = want > 0 ? sold / want : 0;
         for (const x of myRows) x.units = x.demandUnits * ratio;
-        // Take from the oldest lots first.
-        let left = sold;
-        for (const l of lots) {
-          const t = Math.min(l.units, left);
-          l.units -= t;
-          left -= t;
-        }
+        // Take from the oldest lots first; the cost of what sold is this round's cost of goods.
+        pnl.cogs += takeFromLots(lots, sold, uc);
         const plan = d.plan[pid]?.[r];
         const lost = Math.max(0, Math.floor(want) - sold);
         if (fs.regions[r] || q > 0 || stock > 0 || want > 0) rep.supply.push({ productId: pid, region: r, forecast: Math.round(plan?.forecast ?? 0), produced: q, demand: Math.round(want), sold, lost, endInventory: 0 });
         pUnits += sold;
       }
       ps.cumUnits += pProduced;
-      pnl.cogs += pProduced * uc;
+      pnl.production = (pnl.production ?? 0) + pProduced * uc;
       rep.byProduct[pid] = { name: ps.spec.name, units: pUnits, revenue: pRev, unitCost: uc, satisfaction: 0 };
     }
     // Overtime premium, on the average unit cost of what was produced.
-    if (overtime > 0 && produced > 0) pnl.overtimePremium = (pnl.cogs / produced) * overtime * PRODUCTION.overtimeCostPremium;
+    if (overtime > 0 && produced > 0) pnl.overtimePremium = ((pnl.production ?? 0) / produced) * overtime * PRODUCTION.overtimeCostPremium;
   }
 
   // Stockout spill: part of the unmet demand goes to rivals with stock left in that cell.
@@ -629,14 +639,16 @@ export function processRound(input: ProcessInput): RoundResult {
           const extra = Math.min(stock, Math.floor((unmet * x.attractiveness * x.availability) / wE));
           if (extra <= 0) continue;
           x.units += extra;
-          let left = extra;
-          for (const l of lots) {
-            const t = Math.min(l.units, left);
-            l.units -= t;
-            left -= t;
-          }
+          const sp = state.firms[fid].products[x.productId];
+          pnls[fid].cogs += takeFromLots(lots, extra, sp ? unitCostAt(sp.quotedUnitCost, sp.cumUnits, round, sp.briefedRound) : 0);
           const sup = reports[fid].supply.find((y) => y.productId === x.productId && y.region === r);
-          if (sup) sup.sold += extra;
+          // Buyers who switched from a rival that ran out count in this firm's demand too.
+          x.demandUnits += extra;
+          if (sup) {
+            sup.sold += extra;
+            sup.demand += extra;
+            sup.fromRivals = (sup.fromRivals ?? 0) + extra;
+          }
           reports[fid].byProduct[x.productId].units += extra;
         }
       }
@@ -687,6 +699,7 @@ export function processRound(input: ProcessInput): RoundResult {
       unitsByFirmSegment[f.id][x.segment] = (unitsByFirmSegment[f.id][x.segment] ?? 0) + x.units;
     }
 
+    let subsCost = 0;
     // Subscriptions: a share of buyers sign up; the base keeps 80% each round. 3 months per round.
     for (const ps of Object.values(fs.products)) {
       const pid = ps.spec.id;
@@ -701,11 +714,13 @@ export function processRound(input: ProcessInput): RoundResult {
         const subRev = ps.subscribers * ps.spec.subscriptionPrice * 3;
         pnl.subscriptionRevenue += subRev;
         pnl.cogs += ps.subscribers * 3;
+        subsCost += ps.subscribers * 3;
         if (rep.byProduct[pid]) rep.byProduct[pid].revenue += subRev;
       } else ps.subscribers *= 0.8;
     }
 
     // Inventory aging, holding cost and clearance.
+    let inventoryValue = 0;
     for (const ps of Object.values(fs.products)) {
       const pid = ps.spec.id;
       const uc = unitCostAt(ps.quotedUnitCost, ps.cumUnits, round, ps.briefedRound);
@@ -716,12 +731,14 @@ export function processRound(input: ProcessInput): RoundResult {
         const clear = lots.filter((l) => l.age >= PRODUCTION.clearanceAfterRounds && l.units > 0);
         for (const l of clear) {
           pnl.clearanceRevenue += l.units * uc * PRODUCTION.clearanceRecovery;
+          pnl.cogs += l.units * (l.cost ?? uc);
           rep.notes.push(`${Math.round(l.units).toLocaleString()} unsold units of ${ps.spec.name} in ${r.toUpperCase()} were cleared at a discount.`);
           l.units = 0;
         }
         fs.inventory[pid][r] = lots.filter((l) => l.units > 0);
         const left = fs.inventory[pid][r]!.reduce((a, l) => a + l.units, 0);
         pnl.holding += left * uc * PRODUCTION.holdingCostRate;
+        inventoryValue += fs.inventory[pid][r]!.reduce((a, l) => a + l.units * (l.cost ?? uc), 0);
         const sup = rep.supply.find((y) => y.productId === pid && y.region === r);
         if (sup) sup.endInventory = Math.round(left);
       }
@@ -769,7 +786,9 @@ export function processRound(input: ProcessInput): RoundResult {
     // The Financial score uses profit before one-time costs, with expansion amortized.
     pnl.scoredProfit = pnl.operatingProfit + oneTime - amort;
     // Capital already paid fees, expansion and interest above; now revenue in, operating costs out.
-    fs.capital += pnl.revenue - opsCosts;
+    // Cash pays for every unit made this round; profit counts only the cost of units sold (unsold units stay as inventory).
+    fs.capital += pnl.revenue - (opsCosts - pnl.cogs) - (pnl.production ?? 0) - subsCost;
+    rep.capital.inventory = Math.round(inventoryValue);
     fs.lastRevenue = pnl.revenue;
     // HQ emergency loan: cover any shortfall; repay automatically from capital above the cushion.
     let borrowed = 0;
@@ -1019,10 +1038,11 @@ function scoreRound(
     const hi = Math.max(...v);
     return hi === lo ? 50 : ((vals[id] - lo) / (hi - lo)) * 100;
   };
-  // Compared with the best firm, like the other parts. Losses score 0. If no firm made a profit, fall back to worst-to-best.
-  const vsBest = (vals: Record<string, number>, id: string) => {
+  // Compared with the best firm, like the other parts. If no firm made a profit, fall back to worst-to-best.
+  // floor = the lowest points allowed: profit can go below 0 (a loss as big as the best firm's profit = -100); return on promotion can't.
+  const vsBest = (vals: Record<string, number>, id: string, floor = 0) => {
     const hi = Math.max(...ids.map((i) => vals[i]));
-    return hi > 0 ? (Math.max(0, vals[id]) / hi) * 100 : minmax(vals, id);
+    return hi > 0 ? Math.max(floor, (vals[id] / hi) * 100) : minmax(vals, id);
   };
   const profit = Object.fromEntries(ids.map((i) => [i, raw[i].financial]));
   for (const id of ids) {
@@ -1031,7 +1051,7 @@ function scoreRound(
       const b = best(k);
       pts[k] = b > 0 ? (raw[id][k] / b) * 100 : 0;
     }
-    pts.financial = 0.7 * vsBest(profit, id) + 0.3 * vsBest(rop, id);
+    pts.financial = 0.7 * vsBest(profit, id, FINANCE.lossPointsFloor) + 0.3 * vsBest(rop, id);
     points[id] = pts;
   }
 

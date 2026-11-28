@@ -33,6 +33,8 @@ export interface ProForma {
   revenue: number;
   operatingProfit: number;
   capitalEnd: number;
+  /** What making the planned units costs, paid from company capital this round. */
+  production: number;
   marketingEnd: number;
   units: number;
 }
@@ -44,6 +46,7 @@ export function proForma(x: ProFormaInput): ProForma {
   let partner = 0;
   let fulfillment = 0;
   let cogs = 0;
+  let production = 0;
   let holding = 0;
   let units = 0;
   let promotion = 0;
@@ -68,7 +71,9 @@ export function proForma(x: ProFormaInput): ProForma {
           fulfillment += (g / chans.length) * (CHANNEL_TERMS[ch].fulfillmentCost ?? 0);
         }
       }
-      cogs += Math.max(0, pl.production || 0) * uc;
+      // Profit counts only what the units sold cost to make; unsold units stay as inventory.
+      cogs += sold * uc;
+      production += Math.max(0, pl.production || 0) * uc;
       holding += Math.max(0, stock - sold) * uc * PRODUCTION.holdingCostRate;
       if (round >= 1) promotion += cellPromo(pl);
     }
@@ -94,14 +99,15 @@ export function proForma(x: ProFormaInput): ProForma {
   const interest = round >= 1 ? (x.loan ?? 0) * FINANCE.loanInterestPerRound : 0;
   const revenue = gross - partner - fulfillment;
   const operatingProfit = revenue - cogs - holding - capacityFixed - overhead - interest - promotion - research - devFees - entryFees - channelSetup - expansion;
-  const capitalEnd = x.capital - devFees - entryFees - channelSetup - expansion + revenue - cogs - holding - capacityFixed - overhead - interest;
+  // Cash pays for every unit made, sold or not.
+  const capitalEnd = x.capital - devFees - entryFees - channelSetup - expansion + revenue - production - holding - capacityFixed - overhead - interest;
   const r0 = (n: number) => Math.round(n);
   return {
     lines: [
       { key: "grossSales", label: "Sales at list price (forecast × price)", value: r0(gross) },
       { key: "partnerMargin", label: "Partner margins and fulfillment", value: -r0(partner + fulfillment) },
       { key: "revenue", label: "Net revenue", value: r0(revenue) },
-      { key: "cogs", label: "Cost of units produced", value: -r0(cogs) },
+      { key: "cogs", label: "Cost of units sold", value: -r0(cogs) },
       { key: "holding", label: "Holding cost of unsold units", value: -r0(holding) },
       { key: "promotion", label: "Promotion", value: -r0(promotion) },
       { key: "research", label: "Research", value: -r0(research) },
@@ -114,7 +120,62 @@ export function proForma(x: ProFormaInput): ProForma {
     revenue: r0(revenue),
     operatingProfit: r0(operatingProfit),
     capitalEnd: r0(capitalEnd),
+    production: r0(production),
     marketingEnd: r0(x.marketingAvailable - research - promotion),
     units: r0(units),
   };
+}
+
+/** Warnings when company capital can't cover this round's plan (the engine's order: interest, region and channel fees, engineering fees, capacity expansion, then production). */
+export interface CapitalCheck {
+  capital: number;
+  loan: number;
+  /** Capital left after interest and region and channel fees, before engineering fees. */
+  afterFees: number;
+  devFees: number;
+  /** Accepted quotes that won't be developed because capital runs short (in the order they're charged). */
+  unfunded: string[];
+  expansion: number;
+  expansionFunded: boolean;
+  /** Capital left before production and sales. */
+  beforeProduction: number;
+  production: number;
+  /** How much production costs beyond the capital left (0 if it fits). */
+  productionShort: number;
+  warnings: { text: string; step: "products" | "production" | "review" }[];
+}
+
+export function capitalCheck(x: ProFormaInput): CapitalCheck {
+  const d = x.decision;
+  const round = x.round;
+  const pf = proForma(x);
+  const line = (k: string) => -(pf.lines.find((l) => l.key === k)?.value ?? 0);
+  const interest = round >= 1 ? (x.loan ?? 0) * FINANCE.loanInterestPerRound : 0;
+  let cap = x.capital - interest - line("entry");
+  const afterFees = cap;
+  const unfunded: string[] = [];
+  let devFees = 0;
+  for (const p of d.products.filter((p) => p.commission && !x.committed.includes(p.id))) {
+    const fee = quote(p, round).devFee;
+    devFees += fee;
+    if (cap < fee) unfunded.push(p.name);
+    else cap -= fee;
+  }
+  const expansion = round >= 1 ? d.capacityExpansion * PRODUCTION.expansionCostPerUnit : 0;
+  const expansionFunded = expansion <= 0 || cap >= expansion;
+  if (expansion > 0 && expansionFunded) cap -= expansion;
+  const production = pf.production;
+  const productionShort = Math.max(0, production - Math.max(0, cap));
+  const m = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
+  const warnings: CapitalCheck["warnings"] = [];
+  if (x.capital <= 0)
+    warnings.push({ text: `Company capital has run out${(x.loan ?? 0) > 0 ? ` and you owe HQ ${m(x.loan ?? 0)} (3% interest a round)` : ""}. There's no capital for engineering fees or capacity expansion until sales bring money back.`, step: "review" });
+  else if ((x.loan ?? 0) > 0)
+    warnings.push({ text: `You still owe HQ ${m(x.loan ?? 0)} (3% interest a round). It's repaid automatically from capital above ${m(FINANCE.loanRepayCushion)}, and only ${m(x.capital)} of capital is available this round.`, step: "review" });
+  for (const n of unfunded)
+    warnings.push({ text: `Not enough company capital for ${n}'s development fee. If nothing changes, engineering won't develop it at the deadline (HQ's loan doesn't cover engineering fees).`, step: "products" });
+  if (!expansionFunded) warnings.push({ text: `Not enough company capital for the capacity expansion (${m(expansion)}). It will be skipped at the deadline.`, step: "production" });
+  if (productionShort > 0)
+    warnings.push({ text: `Making the units you planned costs ${m(production)}, but only ${m(Math.max(0, cap))} of company capital is left for it. Sales bring some money back during the round; if capital ends below $0, HQ lends the difference at 3% interest a round, which lowers your profit.`, step: "production" });
+  return { capital: x.capital, loan: x.loan ?? 0, afterFees, devFees, unfunded, expansion, expansionFunded, beforeProduction: cap, production, productionShort, warnings };
 }

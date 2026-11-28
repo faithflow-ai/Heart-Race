@@ -240,3 +240,12 @@ Tested by having one team play variations of the same strategy against 7 rivals,
 - [NOTE] Research reports: co-design the contents of all 9 studies (Claude to draft an outline for Victor's review)
 - [NOTE] Learn tab: write the lessons for each round **Built in PR 4 (Nov 23), waiting for merge.**
 - [NOTE] App-wide cosmetic / look-and-feel changes (Victor to provide details)
+
+## Nov 28: Practice to Round 2 test findings (Victor triaging; queued, build when Victor says go)
+
+Findings: /mnt/project-files/Heart Race/Test_Practice_to_R2_Findings.md
+
+- [P1] (Victor, Nov 28; item 1) Proper cost accounting: a unit's cost counts in profit when it's sold (or cleared), not when it's made. Unsold units stay as inventory at cost. Cash still pays for units when they're made. Losses score below 0 on the Financial score's profit part (floor -100 points, where -100 = a loss as big as the best firm's profit). Pro forma updated to match. **Started on branch claude/project-thread-jjhznp, not in a PR yet.**
+- [P1] (Victor, Nov 28; item 2) Warn students when company capital is below $0 or has run out, or can't cover the plan: accepted quotes whose development fee can't be paid (HQ's loan doesn't cover engineering fees, so the product isn't developed), capacity expansion that will be skipped, and production that costs more than the capital left. Show on Products, Forecast and production, Review and in the checklist. **Started on branch claude/project-thread-jjhznp, not in a PR yet.**
+- [P1] (Victor, Nov 28; item 3) Block buying a research study when it has no data yet: Competitor benchmark, Awareness tracking and Satisfaction survey can't be bought until Round 2 (after products have been on the market). The Research screen shows "Available from Round 2" for them.
+- [P2] (Victor, Nov 28; item 4) Buyers who switch to you because a rival ran out of stock count in your demand too, so "Sold" never exceeds "Demand" and actual share never exceeds potential share. Results explains it: "includes N buyers who came over when rivals ran out of stock".

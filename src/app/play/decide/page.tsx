@@ -2,7 +2,7 @@
 import { Fragment, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, fmtShort, money, num } from "@/components/client";
-import { STEPS, activeRegions, checklistItems, sellable, stepStatus } from "@/components/checklist";
+import { STEPS, activeRegions, capitalWarnings, checklistItems, proFormaInputOf, sellable, stepStatus } from "@/components/checklist";
 import { SaveState, useTeam, type TeamData } from "@/components/TeamContext";
 import {
   CHANNELS,
@@ -44,6 +44,19 @@ const REGION_CHANNELS: Record<RegionId, ChannelId[]> = {
   apac: ["online", "marketplace", "mass", "electronics", "pharmacy", "specialty", "carrier", "bizdist"],
   latam: ["online", "marketplace", "mass", "electronics", "pharmacy", "carrier", "bizdist"],
 };
+
+/** Company capital warnings for one decision step (or all of them on Review). */
+function CapitalWarnings({ step }: { step?: "products" | "production" }) {
+  const { team } = useTeam();
+  const ws = capitalWarnings(team!).filter((w) => !step || w.step === step || w.step === "review");
+  if (!ws.length) return null;
+  return (
+    <div className="notice bad" role="alert">
+      <b>Company capital warning</b>
+      {ws.map((w, i) => <p key={i} style={{ margin: "4px 0 0" }}>{w.text}</p>)}
+    </div>
+  );
+}
 
 function Learn({ id }: { id: string }) {
   // Open the first time a student sees it; closed on later visits (remembered in this browser).
@@ -309,6 +322,7 @@ function Products() {
   return (
     <>
       <Learn id="products" />
+      <CapitalWarnings step="products" />
       <div className="notice info">
         Brief up to {PRODUCT_RULES.maxProductsAtLaunch} products now. A third product can be briefed by {ROUNDS.names[PRODUCT_RULES.thirdProductBriefRound]} to launch in {ROUNDS.names[PRODUCT_RULES.thirdProductBriefRound + 1]}.
         Each brief goes through three steps: <b>Draft</b> → <b>Send brief to engineering</b> (you get a quote) → <b>Accept quote</b> (the design locks and the fee is charged at the deadline).
@@ -701,6 +715,7 @@ function Production() {
   return (
     <>
       <Learn id="production" />
+      <CapitalWarnings step="production" />
       <div className="panel">
         <div className="row">
           <b>Factory capacity this round: {num(cap)} units</b>
@@ -790,6 +805,7 @@ function Review() {
   return (
     <>
       <Learn id="review" />
+      <CapitalWarnings />
       <Checklist />
       <div className="grid2">
         <div className="panel">
@@ -886,25 +902,11 @@ function Review() {
 function ProFormaPanel() {
   const { team } = useTeam();
   const t = team!;
-  const b = t.budget;
-  const pf = proForma({
-    round: t.game.round,
-    decision: t.decision,
-    unitCost: Object.fromEntries(t.committed.map((c) => [c.id, c.unitCost])),
-    sellable: sellable(t).map((p) => p.id),
-    regionsEntered: t.regionsEntered as Parameters<typeof proForma>[0]["regionsEntered"],
-    channelsOpen: t.channelsOpen as Parameters<typeof proForma>[0]["channelsOpen"],
-    committed: t.committed.map((c) => c.id),
-    capital: b.capital,
-    marketingAvailable: b.available,
-    capacity: b.capacity,
-    loan: b.loan,
-    inventory: t.inventory as Parameters<typeof proForma>[0]["inventory"],
-  });
+  const pf = proForma(proFormaInputOf(t));
   return (
     <div className="panel">
       <h3 style={{ marginTop: 0 }}>Projected profit and loss (<Term t="pro forma">pro forma</Term>)</h3>
-      <p className="small muted" style={{ marginTop: 0 }}><b>Based on your forecast and decisions, not a prediction of the market.</b> It assumes you sell exactly your forecast (up to the units you have), split evenly across each region&apos;s channels. It updates as you edit. After the round, Results shows projected vs. actual.</p>
+      <p className="small muted" style={{ marginTop: 0 }}><b>Based on your forecast and decisions, not a prediction of the market.</b> It assumes you sell exactly your forecast (up to the units you have), split evenly across each region&apos;s channels. Profit counts the cost of units you sell; units left over stay as inventory, but capital pays for every unit you make. It updates as you edit. After the round, Results shows projected vs. actual.</p>
       <div className="grid2">
         <table>
           <tbody>

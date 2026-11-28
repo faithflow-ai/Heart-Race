@@ -49,7 +49,9 @@ Last updated Nov 27, 2026 (economics update built, waiting for merge). This is t
 | Holding cost | 5% of unit cost per round on unsold stock | Students: on screen | Now |
 | Clearance | Stock unsold for 2 rounds is cleared at 50% of unit cost | Students: on screen | Now |
 | Forecast gap warning | When production and forecast differ by more than 20% | Students: on screen | Now |
-| Stockouts | Half of the buyers you couldn't serve go to rivals. Satisfaction dips | Instructor only (the effect shows in results) | Now |
+| Stockouts | Half of the buyers you couldn't serve go to rivals. Satisfaction dips. Buyers who switch count in the rival's demand too (shown on Results as "from rivals' stockouts") | Instructor only (the effect shows in results) | Queued Nov 28 (demand count) |
+| Cost of goods sold | Capital pays for every unit when it's made. Profit counts a unit's cost only when it's sold or cleared; unsold units sit in inventory at what they cost to make (oldest sold first) | Students: on screen (P&L, Learn box) | Queued Nov 28 |
+| Capital warnings | Products, Forecast and production, Review and the checklist warn when capital has run out, when an accepted quote's fee can't be paid (the product won't be developed; HQ's loan doesn't cover engineering fees), when expansion will be skipped, and when production costs more than the capital left | Students: on screen | Queued Nov 28 |
 
 ## 4. Markets, regions and channels
 
@@ -82,12 +84,14 @@ Last updated Nov 27, 2026 (economics update built, waiting for merge). This is t
 |---|---|---|---|
 | Market | 30% | Share of units sold in the team's named target segments, weighted by segment size, compared with the best firm | Now |
 | Customer | 20% | 40% product fit to target segments, 30% awareness in targets, 30% satisfaction, compared with the best firm | Now |
-| Financial | 20% | 70% profit before one-time costs (engineering, region entry and exit, channel setup) with expansion amortized over 4 rounds; 30% return on promotion (gross margin per promotion dollar over this round and last, capped at 8x, needs at least $50K of promotion). Each compared with the best firm; a loss scores 0. (Was: operating profit and one-round return on promotion, scaled worst-to-best) | Built |
+| Financial | 20% | 70% profit before one-time costs (engineering, region entry and exit, channel setup) with expansion amortized over 4 rounds; 30% return on promotion (gross margin per promotion dollar over this round and last, capped at 8x, needs at least $50K of promotion). Each compared with the best firm. A loss scores below 0 on the profit part, down to -100 points (a loss as big as the best firm's profit); queued Nov 28, was "a loss scores 0". (Was: operating profit and one-round return on promotion, scaled worst-to-best) | Built |
 | Channel | 20% | Coverage of target buyers in target regions, using the trade support actually given, reduced only when the average partner margin runs above what's normal for the target segments' channels (each segment's channel mix times standard margins, weighted by size). (Was: penalty above a flat 15%) | Built |
 | Goals and forecast | 10% | Half forecast accuracy, half closeness to the team's own goals: share by target segment (averaged into one), revenue, margin, awareness, satisfaction. A blank goal scores 0 | Built |
 
 - Targets can change each round. Products still sell in dropped segments and count toward profit, but stop counting toward share. Victor decided this is fine (Nov 27).
 - **Grade.** Round weights: practice 0, Rounds 1 and 2 at 10% each, Rounds 3 to 6 at 15% each, Final 20%. The export shows each team's weighted score as a percent of the best student team's, then bands A 90+, B 80+, C 70+, D 60+. AI firms are ranked but never take a band.
+
+- **Research timing** (queued Nov 28): Competitor benchmark, Awareness tracking and Satisfaction survey can be bought from Round 2, since they report on products already on sale. The other paid studies open in Round 1, and the market survey is free in Practice only.
 
 ## 7. Testing notes
 

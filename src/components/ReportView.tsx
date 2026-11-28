@@ -119,7 +119,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
                 <div>App subscriptions</div><div>{money(pnl.subscriptionRevenue)}</div>
                 <div>Clearance sales</div><div>{money(pnl.clearanceRevenue)}</div>
                 <div><b>Revenue</b></div><div><b>{money(pnl.revenue)}</b></div>
-                <div>Cost of goods made</div><div>-{money(pnl.cogs)}</div>
+                <div>Cost of goods sold</div><div>-{money(pnl.cogs)}</div>
                 <div>Overtime premium</div><div>-{money(pnl.overtimePremium)}</div>
                 <div>Inventory holding</div><div>-{money(pnl.holding)}</div>
                 <div>Factory fixed cost</div><div>-{money(pnl.capacityFixed)}</div>
@@ -163,6 +163,8 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
               <div className="kv">
                 <div>Marketing budget: start → end</div><div>{money(r.budget.start + r.budget.release + r.budget.earned, true)} → {money(r.budget.end, true)}</div>
                 <div>Company capital: start → end</div><div>{money(r.capital.start, true)} → {money(r.capital.end, true)}</div>
+                {pnl.production !== undefined && <><div>Units made this round (paid from capital)</div><div>{money(pnl.production, true)}</div></>}
+                {r.capital.inventory !== undefined && <><div>Unsold inventory, at cost</div><div>{money(r.capital.inventory, true)}</div></>}
                 <div>Capacity used</div><div>{num(r.capacity.used)} of {num(r.capacity.capacity)}</div>
                 <div>Overtime units</div><div>{num(r.capacity.overtime)}</div>
                 <div>Capacity next round</div><div>{num(r.capacity.nextRound)}</div>
@@ -184,7 +186,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
                     <td>{regName(s.region)}</td>
                     <td className="num">{num(s.forecast)}</td>
                     <td className="num">{num(s.produced)}</td>
-                    <td className="num">{num(s.demand)}</td>
+                    <td className="num">{num(s.demand)}{(s.fromRivals ?? 0) > 0 && <div className="small muted">incl. {num(s.fromRivals ?? 0)} from rivals&apos; stockouts</div>}</td>
                     <td className="num">{num(s.sold)}</td>
                     <td className="num">{num(s.lost)}</td>
                     <td className="num">{num(s.endInventory)}</td>
@@ -192,6 +194,7 @@ export function ReportView({ round, report, score, leaderboard, names, proforma,
                 ))}
               </tbody>
             </table>
+            {r.supply.some((s) => (s.fromRivals ?? 0) > 0) && <p className="small muted">Demand includes buyers who came over to you when a rival ran out of stock.</p>}
           </div>
 
           <div className="grid2">

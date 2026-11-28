@@ -19,6 +19,7 @@ import {
   type SegmentId,
   type SensorId,
   type ToneId,
+  studyFromRound,
 } from "./config";
 import { CHANNEL_PUSH, REGION_PROFILES, SEGMENT_PROFILES } from "./market";
 import { baseDemand, refPrice } from "./engine";
@@ -142,7 +143,7 @@ export function aiDecide(firm: FirmMeta, ctx: AiContext): FirmDecision {
   const roundsLeft = ROUNDS.final - ctx.round + 1;
   const spendShare = ctx.round <= 2 ? 0.8 : Math.min(0.9, 1.15 / roundsLeft);
   let promoBudget = pot * spendShare * (0.85 + 0.15 * skill);
-  if (skill >= 0.4 && ctx.round % 2 === 1) {
+  if (skill >= 0.4 && ctx.round % 2 === 1 && ctx.round >= studyFromRound("competitors")) {
     d.research = ["competitors"];
     promoBudget -= 35_000;
   }

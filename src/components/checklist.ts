@@ -1,6 +1,7 @@
 import { PRODUCT_RULES, REGIONS, ROUNDS, UNLOCKS } from "@/sim/config";
 import { MAP_REQUIRED_ROUNDS } from "@/sim/perception";
 import type { TeamData } from "./TeamContext";
+import { capitalCheck, type ProFormaInput } from "@/sim/proforma";
 
 /** The six decision steps, in order. `unlock` is the first round the step opens. */
 export const STEPS = [
@@ -23,6 +24,31 @@ export function sellable(t: TeamData) {
 }
 export function activeRegions(t: TeamData) {
   return REGIONS.filter((r) => t.regionsEntered[r.id] || t.decision.regions[r.id].enter);
+}
+
+/** The team's draft as input for the pro forma and the capital check. */
+export function proFormaInputOf(t: TeamData): ProFormaInput {
+  const b = t.budget;
+  return {
+    round: t.game.round,
+    decision: t.decision,
+    unitCost: Object.fromEntries(t.committed.map((c) => [c.id, c.unitCost])),
+    sellable: sellable(t).map((p) => p.id),
+    regionsEntered: t.regionsEntered as ProFormaInput["regionsEntered"],
+    channelsOpen: t.channelsOpen as ProFormaInput["channelsOpen"],
+    committed: t.committed.map((c) => c.id),
+    capital: b.capital,
+    marketingAvailable: b.available,
+    capacity: b.capacity,
+    loan: b.loan,
+    inventory: t.inventory as ProFormaInput["inventory"],
+  };
+}
+
+/** Company capital warnings for this round's plan (none after the game ends). */
+export function capitalWarnings(t: TeamData) {
+  if (t.game.round > ROUNDS.final) return [];
+  return capitalCheck(proFormaInputOf(t)).warnings;
 }
 
 /** What's still missing this round, each tied to the decision step that fixes it. */
@@ -69,6 +95,7 @@ export function checklistItems(t: TeamData): { text: string; tab: StepId }[] {
   }
   if (round >= UNLOCKS.goals && ([d.goals.revenue, d.goals.margin, d.goals.awareness, d.goals.satisfaction].some((v) => v === null) || d.strategy.targetSegments.some((s) => d.goals.segmentShare?.[s] == null)))
     add("Some numeric goals are blank", "strategy");
+  for (const w of capitalWarnings(t)) add(w.text, w.step);
   if (!d.reflection.trim()) add("Round reflection is empty", "review");
   return items;
 }

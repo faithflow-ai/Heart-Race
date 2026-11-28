@@ -199,7 +199,7 @@ function ScoringStep() {
         <tbody>
           <tr><td>Market</td><td className="num">{SCORECARD_WEIGHTS.market * 100}%</td><td>Your share of units sold in your declared target segments, weighted by segment size.</td></tr>
           <tr><td>Customer</td><td className="num">{SCORECARD_WEIGHTS.customer * 100}%</td><td>How well your products fit those segments, plus awareness and satisfaction.</td></tr>
-          <tr><td>Financial</td><td className="num">{SCORECARD_WEIGHTS.financial * 100}%</td><td>Profit before one-time costs (70%), with capacity expansion spread over 4 rounds, and return on promotion over the last 2 rounds (30%). A loss scores 0.</td></tr>
+          <tr><td>Financial</td><td className="num">{SCORECARD_WEIGHTS.financial * 100}%</td><td>Profit before one-time costs (70%), with capacity expansion spread over 4 rounds, and return on promotion over the last 2 rounds (30%). A loss scores below 0.</td></tr>
           <tr><td>Channel</td><td className="num">{SCORECARD_WEIGHTS.channel * 100}%</td><td>Share of target buyers in your target regions who can find you, minus partner margin paid above what&apos;s normal for where those buyers shop.</td></tr>
           <tr><td>Goal accuracy</td><td className="num">{SCORECARD_WEIGHTS.goals * 100}%</td><td>Half sales-forecast accuracy, half closeness to your own numeric goals. A goal left blank scores 0.</td></tr>
         </tbody>

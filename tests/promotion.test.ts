@@ -64,7 +64,9 @@ describe("pro forma profit and loss", () => {
     const mass = CHANNEL_TERMS.mass.margin + ENTRY_MODES.distributor.extraMargin;
     const online = CHANNEL_TERMS.online.fulfillmentCost ?? 0;
     expect(line("partnerMargin")).toBe(-Math.round(400_000 * mass + 400_000 * online));
-    expect(line("cogs")).toBe(-400_000);
+    // Profit counts the 8,000 units sold; capital pays for all 10,000 made.
+    expect(line("cogs")).toBe(-320_000);
+    expect(pf.production).toBe(400_000);
     expect(line("promotion")).toBe(-100_000);
     expect(line("entry")).toBe(-(ENTRY_MODES.distributor.fee + CHANNEL_TERMS.online.setupFee + CHANNEL_TERMS.mass.setupFee));
     expect(line("fixed")).toBeLessThanOrEqual(-(FINANCE.overheadPerRound + FINANCE.overheadPerRegion));

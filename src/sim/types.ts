@@ -126,6 +126,8 @@ export interface FirmMeta {
 export interface InventoryLot {
   units: number;
   age: number;
+  /** What each unit cost to make (missing in older states: today's unit cost is used). */
+  cost?: number;
 }
 
 export interface ProductState {
@@ -197,7 +199,10 @@ export interface PnL {
   revenue: number; // net of partner margin and fulfillment, plus subscriptions and clearance
   subscriptionRevenue: number;
   clearanceRevenue: number;
+  /** Cost of goods sold: what the units sold or cleared this round cost to make, plus app service costs. */
   cogs: number;
+  /** What making this round's units cost, paid from company capital now. Unsold units are kept as inventory, not counted in profit (missing in older results). */
+  production?: number;
   overtimePremium: number;
   holding: number;
   capacityFixed: number;
@@ -237,11 +242,11 @@ export interface FirmReport {
   byChannel: Partial<Record<ChannelId, { units: number; revenue: number; margin: number }>>;
   rows: ShareRow[];
   /** Units per product per region: forecast, produced, demand, sold, lost, left over. */
-  supply: { productId: string; region: RegionId; forecast: number; produced: number; demand: number; sold: number; lost: number; endInventory: number }[];
+  supply: { productId: string; region: RegionId; forecast: number; produced: number; demand: number; sold: number; lost: number; endInventory: number; /** Buyers who came over when rivals ran out of stock (included in demand and sold; missing in older results). */ fromRivals?: number }[];
   goals: { key: string; label: string; goal: number | null; actual: number }[];
   forecastAccuracy: number;
   budget: { start: number; release: number; earned: number; spent: number; end: number };
-  capital: { start: number; end: number; borrowed?: number; repaid?: number; loan?: number };
+  capital: { start: number; end: number; borrowed?: number; repaid?: number; loan?: number; /** Unsold units at what they cost to make (missing in older results). */ inventory?: number };
   /** Promotion + research limit this round (missing in older results). */
   spendLimit?: number;
   capacity: { capacity: number; used: number; overtime: number; nextRound: number };

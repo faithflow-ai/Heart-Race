@@ -1,4 +1,4 @@
-import { AI, DEFAULT_SETTINGS, MARKETING_BUDGET, ROUNDS, STUDIES, TEAM_NAMES, UNLOCKS, type AiStyle, type GameSettings, type StudyId } from "@/sim/config";
+import { AI, DEFAULT_SETTINGS, MARKETING_BUDGET, ROUNDS, STUDIES, studyFromRound, TEAM_NAMES, UNLOCKS, type AiStyle, type GameSettings, type StudyId } from "@/sim/config";
 import { processRound, spendingLimit } from "@/sim/engine";
 import { cellPromo, emptyDecision, normalizeDecision, syncPromotion } from "@/sim/product";
 import { proForma } from "@/sim/proforma";
@@ -270,6 +270,7 @@ export async function buyStudy(g: GameRow, firmId: string, user: User, study: St
   const round = g.current_round;
   if (round < UNLOCKS.research) throw new HttpError(400, "Research isn't open yet.");
   if ("practiceOnly" in st && st.practiceOnly && round !== 0) throw new HttpError(400, "The free market survey is only offered in the practice round.");
+  if (st.cost > 0 && round < studyFromRound(study)) throw new HttpError(400, `${st.name} isn't available until ${ROUNDS.names[studyFromRound(study)]}: it reports on products already on the market.`);
   const { data } = await getDecision(firmId, round);
   if (data.research.includes(study)) throw new HttpError(400, "You already bought this study this round.");
   const latest = await latestResult(g);
