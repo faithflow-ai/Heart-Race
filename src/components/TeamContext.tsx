@@ -21,6 +21,8 @@ export interface TeamData {
   committed: { id: string; launchRound: number; retired: boolean; unitCost: number; eventCost?: number }[];
   /** Market event news for this round (and early warnings). */
   news?: import("@/sim/events").NewsItem[];
+  /** True once the first market event has been announced (opens the market events lesson). */
+  eventsSeen?: boolean;
   regionsEntered: Record<string, string>;
   channelsOpen: Record<string, string[]>;
   inventory: Record<string, Record<string, number>>;

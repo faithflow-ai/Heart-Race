@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from "../src/sim/config";
 import { RIVAL_ID } from "../src/sim/engine";
 import { eventResponses, eventSchedule, newsFor } from "../src/sim/events";
 import type { RoundResult } from "../src/sim/types";
+import { LESSONS } from "../src/sim/lessons";
 
 const OFF = { chip: null, rival: null, tariff: null };
 
@@ -65,5 +66,13 @@ describe("market events", () => {
   it("warns about the chip shortage a round early", () => {
     const on = season({ ...OFF, chip: 4 });
     expect(newsFor(3, 3, on.firms, on.results[2], on.settings).map((n) => n.when)).toEqual(["next"]);
+  });
+
+  it("keeps the event sizes out of the student part of the lesson", () => {
+    const l = LESSONS.find((x) => x.id === "events");
+    expect(l).toBeDefined();
+    const student = l!.body.split("\n").filter((line) => !line.startsWith(">")).join("\n");
+    for (const secret of ["150%", "30%", "35%", "70%", "92%", "78%", "4,000", "Orvane"]) expect(student).not.toContain(secret);
+    expect(l!.body).toContain("> Instructor note");
   });
 });

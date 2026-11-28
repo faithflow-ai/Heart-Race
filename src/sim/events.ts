@@ -35,7 +35,7 @@ export const EVENT_RULES = {
   },
   rival: {
     name: EVENT_META.rival.name,
-    brand: "Zenra",
+    brand: "Orvane",
     /** How well the rival's product fits its segment (0..1). */
     fit: 0.95,
     /** Its price versus what the segment expects. It matches price cuts down to a floor... */

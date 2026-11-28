@@ -11,6 +11,8 @@ export default function LearnPage() {
   const notes = !!t.viewAs;
   const rounds = LESSONS.filter((l) => l.round !== null && (l.round <= round || notes));
   const creative = LESSONS.find((l) => l.id === "creative");
+  const events = LESSONS.find((l) => l.id === "events");
+  const showEvents = !!events && (notes || !!t.eventsSeen);
   const upcoming = LESSONS.filter((l) => l.round !== null && l.round > round).length;
   return (
     <>
@@ -26,6 +28,12 @@ export default function LearnPage() {
           <Markdown text={l.body} notes={notes} />
         </details>
       ))}
+      {showEvents && events && (
+        <details className="panel" open={(t.news ?? []).length > 0}>
+          <summary><b style={{ fontSize: 18 }}>{events.title}</b> <span className="small muted">(companion lesson for Market news)</span></summary>
+          <Markdown text={events.body} notes={notes} />
+        </details>
+      )}
       {creative && (
         <details className="panel" open={round === 1 || round === 4 || round === ROUNDS.final}>
           <summary><b style={{ fontSize: 18 }}>{creative.title}</b> <span className="small muted">(companion lesson for the Creative tab)</span></summary>
