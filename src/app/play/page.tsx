@@ -79,7 +79,7 @@ export default function TeamHome() {
               <p style={{ margin: "4px 0 0" }}>{n.body}</p>
             </div>
           ))}
-          <p className="small muted" style={{ marginBottom: 0 }}>How your team responds is up to you. See the Learn tab for the ideas behind it.</p>
+          <p className="small muted" style={{ marginBottom: 0 }}>How your team responds is up to you. The lesson &ldquo;Market events: responding to shocks&rdquo; on the Learn tab explains the ideas behind it.</p>
         </div>
       )}
 

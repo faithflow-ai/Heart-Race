@@ -1,7 +1,7 @@
 import { isGuest, requireUser } from "@/lib/auth";
 import { one, q } from "@/lib/db";
 import { budgetEstimate, firmMeta, getDecision, getFirms, latestResult, processedRounds, settingsOf } from "@/lib/game";
-import { eventUnitCost, eventsForRound, newsFor } from "@/sim/events";
+import { eventSchedule, eventUnitCost, eventsForRound, newsFor } from "@/sim/events";
 import { unitCostAt } from "@/sim/product";
 import { studentContext } from "@/lib/access";
 import { handle } from "@/lib/http";
@@ -33,6 +33,8 @@ export const GET = handle(async () => {
   const metas = firms.map((f) => firmMeta(f, round));
   const ev = eventsForRound(round, game.seed, metas, latest, latest?.state ?? null, settingsOf(game));
   const news = newsFor(round, game.seed, metas, latest, settingsOf(game));
+  // The market events lesson opens once the first event is announced (the chip shortage is announced a round early).
+  const eventsSeen = Object.entries(eventSchedule(settingsOf(game))).some(([id, r]) => r !== null && round >= r - (id === "chip" ? 1 : 0));
   const reports = await q<{ round: number; study: string }>("select round, study from research_reports where firm_id = $1 order by round, study", [firm.id]);
   return {
     user,
@@ -56,6 +58,7 @@ export const GET = handle(async () => {
         })
       : [],
     news,
+    eventsSeen,
     regionsEntered: fs ? fs.regions : {},
     channelsOpen: fs ? fs.channelsOpen : {},
     inventory: fs ? Object.fromEntries(Object.entries(fs.inventory).map(([pid, regs]) => [pid, Object.fromEntries(Object.entries(regs).map(([r, lots]) => [r, (lots ?? []).reduce((a, l) => a + l.units, 0)]))])) : {},

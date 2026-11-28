@@ -11,7 +11,7 @@ Allow about 15 minutes. Use a demo class, so no real students are affected.
 ## 2. What students see
 1. Run the demo class to Round 3, then use **View as student** on any team. The Home page should show **Market news** with "Chip makers warn of a shortage" and the label **Expected next round**.
 2. Run the class to Round 4. Home now shows "The chip shortage has arrived." On **Decisions > Products**, an advanced-chip product's quote shows a line called **Market event costs included**.
-3. In Round 5, Home shows that **Zenra** has launched, along with the segment and region it's aimed at and its one weakness.
+3. In Round 5, Home shows that **Orvane** has launched, along with the segment and region it's aimed at and its one weakness.
 4. In Round 6, Home shows the tariff news, and unit costs on Products go up.
 5. Check that none of the news items show any exact numbers.
 
