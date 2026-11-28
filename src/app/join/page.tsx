@@ -5,7 +5,7 @@ import { api } from "@/components/client";
 export default function JoinPage() {
   const [code, setCode] = useState("");
   const [me, setMe] = useState<{ name: string; email: string } | null | undefined>(undefined);
-  const [info, setInfo] = useState<{ game: { name: string; code: string }; teams: { id: string; name: string; members: number }[] } | null>(null);
+  const [info, setInfo] = useState<{ game: { name: string; code: string }; myTeam?: string | null; teams: { id: string; name: string; members: number }[] } | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function JoinPage() {
     }
   }
   async function join(firmId: string, name: string) {
-    if (!window.confirm(`Join ${name}? Only join the team your instructor assigned you to. (Your instructor can move you later if needed.)`)) return;
+    if (!window.confirm(`Join ${name}? Only join the team your instructor assigned you to. Once you join, only your instructor can move you to another team.`)) return;
     setError("");
     try {
       await api("/api/join", { body: { code, firmId } });
@@ -61,7 +61,11 @@ export default function JoinPage() {
         {info && (
           <>
             <h2>{info.game.name}</h2>
-            <p className="muted small">Pick the team your instructor assigned you to.</p>
+            {info.myTeam ? (
+              <div className="notice info">You&apos;re already on <b>{info.teams.find((x) => x.id === info.myTeam)?.name ?? "a team"}</b> in this class. <a href="/play">Go to your team</a>. To switch teams, ask your instructor to move you.</div>
+            ) : (
+              <p className="muted small">Pick the team your instructor assigned you to. Once you join, only your instructor can move you to another team.</p>
+            )}
             <table>
               <tbody>
                 {info.teams.map((t) => (
@@ -69,7 +73,7 @@ export default function JoinPage() {
                     <td>{t.name}</td>
                     <td className="muted small">{t.members} joined</td>
                     <td className="num">
-                      <button onClick={() => join(t.id, t.name)}>Join</button>
+                      {info.myTeam ? (info.myTeam === t.id ? <span className="badge">Your team</span> : null) : <button onClick={() => join(t.id, t.name)}>Join</button>}
                     </td>
                   </tr>
                 ))}

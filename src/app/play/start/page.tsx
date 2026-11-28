@@ -192,16 +192,20 @@ function RoundStep() {
 }
 
 function ScoringStep() {
+  const { team } = useTeam();
+  // This class's weights (the instructor can change them); defaults if not loaded.
+  const W = team?.game.weights ?? SCORECARD_WEIGHTS;
+  const pct = (v: number) => Math.round(v * 100);
   return (
     <div className="panel">
       <p>Each measure becomes 0 to 100 points against the best firm that round. Your round score is the weighted sum.</p>
       <table>
         <tbody>
-          <tr><td>Market</td><td className="num">{SCORECARD_WEIGHTS.market * 100}%</td><td>Your share of units sold in your declared target segments, weighted by segment size.</td></tr>
-          <tr><td>Customer</td><td className="num">{SCORECARD_WEIGHTS.customer * 100}%</td><td>How well your products fit those segments, plus awareness and satisfaction.</td></tr>
-          <tr><td>Financial</td><td className="num">{SCORECARD_WEIGHTS.financial * 100}%</td><td>Profit before one-time costs (70%), with capacity expansion spread over 4 rounds, and return on promotion over the last 2 rounds (30%). A loss scores below 0.</td></tr>
-          <tr><td>Channel</td><td className="num">{SCORECARD_WEIGHTS.channel * 100}%</td><td>Share of target buyers in your target regions who can find you, minus partner margin paid above what&apos;s normal for where those buyers shop.</td></tr>
-          <tr><td>Goal accuracy</td><td className="num">{SCORECARD_WEIGHTS.goals * 100}%</td><td>Half sales-forecast accuracy, half closeness to your own numeric goals. A goal left blank scores 0.</td></tr>
+          <tr><td>Market</td><td className="num">{pct(W.market)}%</td><td>Your share of units sold in your declared target segments, weighted by segment size.</td></tr>
+          <tr><td>Customer</td><td className="num">{pct(W.customer)}%</td><td>How well your products fit those segments, plus awareness and satisfaction.</td></tr>
+          <tr><td>Financial</td><td className="num">{pct(W.financial)}%</td><td>Profit before one-time costs (70%), with capacity expansion spread over 4 rounds, and return on promotion over the last 2 rounds (30%). A loss scores below 0.</td></tr>
+          <tr><td>Channel</td><td className="num">{pct(W.channel)}%</td><td>Share of target buyers in your target regions who can find you, minus partner margin paid above what&apos;s normal for where those buyers shop.</td></tr>
+          <tr><td>Goal accuracy</td><td className="num">{pct(W.goals)}%</td><td>Half sales-forecast accuracy, half closeness to your own numeric goals. A goal left blank scores 0.</td></tr>
         </tbody>
       </table>
       <p className="small muted">Worked example: points of Market 80, Customer 70, Financial 50, Channel 90, Goals 60 give 0.3×80 + 0.2×70 + 0.2×50 + 0.2×90 + 0.1×60 = 72.</p>

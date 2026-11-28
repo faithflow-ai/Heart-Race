@@ -5,6 +5,7 @@
  */
 import {
   CHANNEL_TERMS,
+  CLAIMS,
   DEFAULT_SETTINGS,
   ENTRY_MODES,
   FINANCE,
@@ -1118,7 +1119,7 @@ function buildConcerns(f: FirmMeta, fs: FirmState, d: FirmDecision, rep: FirmRep
         const anyRow = rep.rows.find((x) => x.productId === ps.spec.id);
         return anyRow ? !claimIsTrue(ps.spec, cl, anyRow.price, refPrice(anyRow.segment, anyRow.region)) : false;
       });
-      if (lies.length) c.push({ title: `Ad claims for ${ps.spec.name} overstate the product`, detail: `Reviewers flagged: ${lies.join(", ")}. Overpromising lifts sales a little now but lowers satisfaction.`, fix: "Feature only benefits the product actually delivers." });
+      if (lies.length) c.push({ title: `Ad claims for ${ps.spec.name} overstate the product`, detail: `Reviewers flagged: ${lies.map((cl) => `"${CLAIMS[cl]?.name ?? cl}"`).join(", ")}. Overpromising lifts sales a little now but lowers satisfaction.`, fix: "Feature only benefits the product actually delivers." });
     }
     const lost = rep.supply.reduce((a, y) => a + y.lost, 0);
     const want = rep.supply.reduce((a, y) => a + y.demand, 0);

@@ -10,6 +10,7 @@ import { creativeBoosts } from "./creative";
 import { HttpError, type User } from "./auth";
 import { newId, one, q } from "./db";
 import { nextDeadline } from "./time";
+import { checkOp } from "./validate";
 
 export interface GameRow {
   id: string;
@@ -185,44 +186,20 @@ export async function applyOps(g: GameRow, firmId: string, round: number, user: 
   const latest = await latestResult(g);
   const committed = new Set(Object.keys(latest?.state.firms[firmId]?.products ?? {}));
   const log: { path: string; old: unknown; new: unknown }[] = [];
+  // Each edit is checked and applied on its own: a refused edit doesn't drop the others.
+  const refused: { path: string; message: string }[] = [];
   for (const op of ops) {
-    const segs = op.path.split(".");
-    if (segs[0] === "research") throw new HttpError(400, "Buy research on the Research screen.");
-    if (segs[0] === "products" && segs[1]?.startsWith("#") && committed.has(segs[1].slice(1)) && LOCKED_FIELDS.has(segs[2] ?? "")) {
-      throw new HttpError(400, "Engineering has accepted this product, so its components are locked.");
-    }
-    if (segs[0] === "products" && segs[1]?.startsWith("#") && !committed.has(segs[1].slice(1))) {
-      const prod = data.products.find((x) => x.id === segs[1].slice(1));
-      const field = segs[2] ?? "";
-      if (prod && field === "commission" && op.value === true && !prod.briefSent) throw new HttpError(400, "Send the brief to engineering and get a quote before accepting it.");
-      if (prod && (prod.briefSent || prod.commission) && DESIGN_FIELDS.has(field)) throw new HttpError(400, "This brief is with engineering. Click \"Revise brief\" to change it.");
-    }
-    const { parent, key } = walk(data, segs);
-    const p = parent as Record<string | number, unknown>;
-    const kind = op.op ?? "set";
-    if (kind === "set") {
-      const old = p[key];
-      if (JSON.stringify(old) === JSON.stringify(op.value)) continue;
-      p[key] = op.value;
-      log.push({ path: op.path, old: old ?? null, new: op.value ?? null });
-    } else if (kind === "push") {
-      const arr = p[key] as unknown[];
-      if (!Array.isArray(arr)) throw new HttpError(400, "Bad path");
-      arr.push(op.value);
-      log.push({ path: op.path, old: null, new: op.value ?? null });
-    } else if (kind === "remove") {
-      const arr = p[key] as { id: string }[];
-      const id = String(op.value);
-      if (op.path === "products" && committed.has(id)) throw new HttpError(400, "Retire an accepted product instead of deleting it.");
-      const i = arr.findIndex((x) => x.id === id);
-      if (i >= 0) {
-        log.push({ path: `${op.path}.#${id}`, old: arr[i], new: null });
-        arr.splice(i, 1);
-        if (op.path === "products") delete (data.plan as Record<string, unknown>)[id];
-      }
+    try {
+      applyOne(data, op, round, committed, log);
+    } catch (e) {
+      if (!(e instanceof HttpError)) throw e;
+      refused.push({ path: op.path, message: e.message });
     }
   }
-  if (!log.length) return { data, changed: 0 };
+  if (!log.length) {
+    if (refused.length === ops.length && refused.length) throw new HttpError(400, refused[0].message);
+    return { data, changed: 0, refused };
+  }
   syncPromotion(data);
   await q("update decisions set data = $1, updated_at = now(), updated_by = $2 where firm_id = $3 and round = $4", [JSON.stringify(data), user.id, firmId, round]);
   for (const l of log) {
@@ -234,7 +211,52 @@ export async function applyOps(g: GameRow, firmId: string, round: number, user: 
     if (recent) await q("update change_log set new_value = $1, at = now() where id = $2", [JSON.stringify(l.new), recent.id]);
     else await q("insert into change_log (firm_id, round, user_id, path, old_value, new_value) values ($1,$2,$3,$4,$5,$6)", [firmId, round, user.id, l.path, JSON.stringify(l.old), JSON.stringify(l.new)]);
   }
-  return { data, changed: log.length };
+  return { data, changed: log.length, refused };
+}
+
+/** Check one edit against the screens' rules, then apply it to the draft and note it for the change log. */
+function applyOne(data: FirmDecision, op: Op, round: number, committed: Set<string>, log: { path: string; old: unknown; new: unknown }[]) {
+  const segs = op.path.split(".");
+  if (segs[0] === "research") throw new HttpError(400, "Buy research on the Research screen.");
+  if (segs[0] === "products" && segs[1]?.startsWith("#") && committed.has(segs[1].slice(1)) && LOCKED_FIELDS.has(segs[2] ?? "")) {
+    throw new HttpError(400, "Engineering has accepted this product, so its components are locked.");
+  }
+  if (segs[0] === "products" && segs[1]?.startsWith("#") && !committed.has(segs[1].slice(1))) {
+    const prod = data.products.find((x) => x.id === segs[1].slice(1));
+    const field = segs[2] ?? "";
+    if (prod && field === "commission" && op.value === true && !prod.briefSent) throw new HttpError(400, "Send the brief to engineering and get a quote before accepting it.");
+    if (prod && (prod.briefSent || prod.commission) && DESIGN_FIELDS.has(field)) throw new HttpError(400, "This brief is with engineering. Click \"Revise brief\" to change it.");
+  }
+  checkOp(op, { round, data, committed });
+  // "Looks right, keep it": recorded in the change log only.
+  if (segs[0] === "reviewed") {
+    log.push({ path: op.path, old: null, new: true });
+    return;
+  }
+  const { parent, key } = walk(data, segs);
+  const p = parent as Record<string | number, unknown>;
+  const kind = op.op ?? "set";
+  if (kind === "set") {
+    const old = p[key];
+    if (JSON.stringify(old) === JSON.stringify(op.value)) return;
+    p[key] = op.value;
+    log.push({ path: op.path, old: old ?? null, new: op.value ?? null });
+  } else if (kind === "push") {
+    const arr = p[key] as unknown[];
+    if (!Array.isArray(arr)) throw new HttpError(400, "Bad path");
+    arr.push(op.value);
+    log.push({ path: op.path, old: null, new: op.value ?? null });
+  } else if (kind === "remove") {
+    const arr = p[key] as { id: string }[];
+    const id = String(op.value);
+    if (op.path === "products" && committed.has(id)) throw new HttpError(400, "Retire an accepted product instead of deleting it.");
+    const i = arr.findIndex((x) => x.id === id);
+    if (i >= 0) {
+      log.push({ path: `${op.path}.#${id}`, old: arr[i], new: null });
+      arr.splice(i, 1);
+      if (op.path === "products") delete (data.plan as Record<string, unknown>)[id];
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

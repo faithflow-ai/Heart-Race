@@ -2,7 +2,7 @@
 import { Fragment, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, fmtShort, money, num } from "@/components/client";
-import { STEPS, activeRegions, capitalWarnings, checklistItems, proFormaInputOf, sellable, stepStatus } from "@/components/checklist";
+import { STEPS, activeRegions, capitalWarnings, checklistItems, excessStock, proFormaInputOf, sellable, stepMark, stepNote, stepStatus } from "@/components/checklist";
 import { SaveState, useTeam, type TeamData } from "@/components/TeamContext";
 import {
   CHANNELS,
@@ -110,6 +110,31 @@ export default function DecidePage() {
   );
 }
 
+/** From Round 2 on: a step nobody has touched this round still holds last round's choices. */
+function KeepIt({ step }: { step: string }) {
+  const { team, reload } = useTeam();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const keep = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      await api("/api/team/decision", { method: "PATCH", body: { round: team!.game.round, ops: [{ path: `reviewed.${step}`, op: "set", value: true }] } });
+      await reload();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="notice warn row" style={{ alignItems: "center" }}>
+      <span style={{ flex: 1 }}><b>Carried forward from last round.</b> Nobody on your team has changed this step this round, so last round&apos;s choices will be used. Check they still fit, then change what you need or keep them.{err && <span className="neg"> {err}</span>}</span>
+      <button type="button" onClick={keep} disabled={busy}>{busy ? "Saving…" : "Looks right, keep it"}</button>
+    </div>
+  );
+}
+
 function Decide() {
   const { team } = useTeam();
   const sp = useSearchParams();
@@ -118,7 +143,7 @@ function Decide() {
   const over = round > ROUNDS.final;
   const steps = stepStatus(t);
   // Step 1 by default; from Round 2 on, open on the first step that needs attention.
-  const firstOpen = round >= 2 && !t.viewAs ? steps.find((x) => x.state === "attention" && x.id !== "review") : undefined;
+  const firstOpen = round >= 2 && !t.viewAs ? steps.find((x) => x.state === "attention" && x.id !== "review") ?? steps.find((x) => x.state === "carried") : undefined;
   const tab = sp.get("tab") ?? firstOpen?.id ?? "strategy";
   const idx = Math.max(0, STEPS.findIndex((x) => x.id === tab));
   const current = steps[idx];
@@ -132,11 +157,10 @@ function Decide() {
         <div className="steplist-head">{ROUNDS.names[Math.min(round, ROUNDS.final)]} decisions</div>
         {steps.map((x, i) => (
           <a key={x.id} href={`/play/decide?tab=${x.id}`} className={`step ${x.id === current.id ? "cur" : ""} ${x.state}`} aria-current={x.id === current.id ? "step" : undefined}>
-            <span className={`dot ${x.state}`}>{x.state === "done" ? "✓" : x.state === "attention" ? "!" : x.locked ? "" : i + 1}</span>
+            <span className={`dot ${x.state}`}>{stepMark(x) || (x.locked ? "" : i + 1)}</span>
             <span className="step-label">
               {i + 1}. {x.label}
-              {x.locked && <small>Opens in {x.opens}</small>}
-              {x.state === "attention" && <small>{x.issues} to check</small>}
+              {x.state !== "done" && <small>{stepNote(x)}</small>}
             </span>
           </a>
         ))}
@@ -153,6 +177,8 @@ function Decide() {
           </div>
         ) : (
           <fieldset className="plain" disabled={(t.viewAs && !t.tryIt) || over}>
+            {current.state === "carried" && <KeepIt step={current.id} />}
+            {current.state === "waiting" && <div className="notice info">This step needs {current.waiting} first. Finish that step, then come back here.</div>}
             {current.id === "strategy" && <Strategy />}
             {current.id === "products" && <Products />}
             {current.id === "markets" && <Markets />}
@@ -751,14 +777,23 @@ function Production() {
                 const f = pl?.forecast ?? 0;
                 const supply = (pl?.production ?? 0) + stock;
                 const gap = f > 0 ? Math.abs(supply - f) / f : supply > 0 ? 1 : 0;
+                const ex = excessStock(stock, pl?.production ?? 0, f);
                 return (
-                  <tr key={r.id}>
-                    <td>{r.name}</td>
-                    <td className="num">{num(stock)}</td>
-                    <td style={{ width: 180 }}><NumIn value={pl?.forecast ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.forecast`, v ?? 0)} /></td>
-                    <td style={{ width: 180 }}><NumIn value={pl?.production ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.production`, v ?? 0)} /></td>
-                    <td>{gap > PRODUCTION.forecastGapWarning && <span className="badge warn">Stock + production is {Math.round(gap * 100)}% off forecast</span>}</td>
-                  </tr>
+                  <Fragment key={r.id}>
+                    <tr>
+                      <td>{r.name}</td>
+                      <td className="num">{num(stock)}</td>
+                      <td style={{ width: 180 }}><NumIn value={pl?.forecast ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.forecast`, v ?? 0)} /></td>
+                      <td style={{ width: 180 }}><NumIn value={pl?.production ?? null} step={500} onChange={(v) => set(`plan.${p.id}.${r.id}.production`, v ?? 0)} /></td>
+                      <td>{gap > PRODUCTION.forecastGapWarning && <span className="badge warn">Stock + production is {Math.round(gap * 100)}% off forecast</span>}</td>
+                    </tr>
+                    <tr className="subrow">
+                      <td colSpan={5} className="small muted">
+                        Units available to sell = {num(stock)} in stock now + {num(pl?.production ?? 0)} production = <b>{num(supply)}</b>
+                        {ex && <div className="notice warn small" style={{ margin: "6px 0 0" }}>{ex.charAt(0).toUpperCase() + ex.slice(1)}</div>}
+                      </td>
+                    </tr>
+                  </Fragment>
                 );
               })}
             </tbody>
