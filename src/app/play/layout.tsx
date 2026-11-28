@@ -38,10 +38,12 @@ function Shell({ children }: { children: React.ReactNode }) {
           { href: "/play/research", label: "Research" },
           { href: "/play/learn", label: "Learn" },
           { href: "/play/creative", label: "Creative" },
+          ...(team?.peer && !team.peer.submitted ? [{ href: "/play/peer", label: "Peer eval", highlight: true, badge: "Due" }] : []),
         ]}
         more={[
           { href: "/play/history", label: "Past decisions", hint: "by round" },
           { href: "/play/log", label: "Change log", hint: "who changed what" },
+          { href: "/play/peer", label: "Peer evaluation", hint: "rate your teammates" },
         ]}
       />
       {team && <RoundTracker team={team} />}

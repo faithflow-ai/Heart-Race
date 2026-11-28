@@ -125,3 +125,19 @@ create table if not exists activity_signals (
   detail jsonb
 );
 create index if not exists activity_signals_firm on activity_signals (firm_id, round);
+
+-- Peer evaluation (Nov 2026): each student rates every teammate and themselves in each evaluation window.
+-- Window dates, release and instructor overrides live in games.settings.peer.
+create table if not exists peer_reviews (
+  game_id text not null references games(id) on delete cascade,
+  window_id text not null,
+  firm_id text not null references firms(id) on delete cascade,
+  rater_id text not null references users(id) on delete cascade,
+  ratee_id text not null references users(id) on delete cascade,
+  scores jsonb not null default '{}'::jsonb,
+  well text not null default '',
+  improve text not null default '',
+  private_note text not null default '',
+  submitted_at timestamptz not null default now(),
+  primary key (game_id, window_id, rater_id, ratee_id)
+);

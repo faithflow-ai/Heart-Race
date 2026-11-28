@@ -6,6 +6,7 @@ import { unitCostAt } from "@/sim/product";
 import { studentContext } from "@/lib/access";
 import { handle } from "@/lib/http";
 import { stepOfPath } from "@/lib/steps";
+import { peerNotice } from "@/lib/peer";
 
 /** Everything a team's screens need for the open round. */
 export const GET = handle(async () => {
@@ -65,6 +66,7 @@ export const GET = handle(async () => {
     processed: await processedRounds(game.id),
     lastEdits,
     onboarding: viewAs ? null : (ob?.onboarding ?? {}),
+    peer: viewAs ? null : await peerNotice(game, user.id),
     research: reports.map((r) => ({ ...r, round: Number(r.round) })),
   };
 });

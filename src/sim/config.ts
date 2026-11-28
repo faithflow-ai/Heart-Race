@@ -427,3 +427,31 @@ export const GRADE_BANDS = [
   { min: 60, band: "D" },
   { min: 0, band: "F" },
 ];
+
+/**
+ * Peer evaluation (agreed with Victor, Nov 2026). Each student rates every
+ * teammate and themselves from 1 to 10 on five items; self-ratings never count.
+ * A student's peer score for a window = average from teammates x 10, minus
+ * missPenalty for not submitting. Graded windows combine by weight, and the
+ * peer score is shareOfSimGrade of the student's sim grade (the CSV export).
+ */
+export const PEER = {
+  scale: { min: 1, max: 10 },
+  shareOfSimGrade: 0.2,
+  missPenalty: 10,
+  flags: { low: 6, selfGap: 2 },
+  items: [
+    { id: "reliable", name: "Shows up and meets deadlines", help: "Comes to team meetings, answers messages and finishes their part on time." },
+    { id: "share", name: "Does a fair share of the analysis and decisions", help: "Carries their weight on reports, numbers and choices, not just data entry." },
+    { id: "quality", name: "Quality of ideas and preparation", help: "Comes prepared, uses the research and brings ideas that move the team forward." },
+    { id: "teamwork", name: "Communicates and works well with others", help: "Listens, is respectful, handles disagreement well and keeps others informed." },
+    { id: "charter", name: "Follows the team charter", help: "Keeps the commitments your team wrote down in its charter." },
+  ],
+  anchors: { 1: "Not at all", 4: "Sometimes", 7: "Usually", 10: "Always, a model teammate" } as Record<number, string>,
+  windows: [
+    { id: "checkin", name: "Early check-in", weight: 0, when: "after Round 2 (optional, not graded)" },
+    { id: "mid", name: "Peer evaluation 1", weight: 0.4, when: "after board meeting 1" },
+    { id: "final", name: "Peer evaluation 2", weight: 0.6, when: "after the final board meeting" },
+  ],
+} as const;
+export type PeerWindowId = (typeof PEER.windows)[number]["id"];
