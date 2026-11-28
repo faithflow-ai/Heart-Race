@@ -34,3 +34,8 @@ Use the Vercel preview link on the PR, or the live site after merging. The quick
 1. In Round 1 or later, open **Forecast and production**.
 2. Under the capacity bar, a line shows **Cost of making these units** and the capital left for production after this round's fees.
 3. Raise production until the cost is more than that capital: the red **Company capital warning** appears at the top.
+
+## 8. Research budget
+1. In Round 1, plan promotion on **Price and promotion** until almost all of the marketing budget is used.
+2. Open **Research**. "Marketing budget left this round, after planned promotion" matches the number on Home.
+3. Studies that cost more than what's left show a greyed-out Buy button and a note to lower planned promotion first.

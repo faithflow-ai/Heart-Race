@@ -276,7 +276,8 @@ export async function buyStudy(g: GameRow, firmId: string, user: User, study: St
   if (data.research.includes(study)) throw new HttpError(400, "You already bought this study this round.");
   const latest = await latestResult(g);
   const b = budgetEstimate(g, latest, firmId, data);
-  if (st.cost > b.available - b.research) throw new HttpError(400, "Not enough marketing budget left for this study.");
+  if (st.cost > b.remaining) throw new HttpError(400, "Not enough marketing budget left for this study. Lower planned promotion on Price and promotion first.");
+  if (round >= 1 && st.cost > b.limit - b.promotion - b.research) throw new HttpError(400, "This study would go over this round's spending limit (promotion plus research). Lower planned promotion on Price and promotion first.");
   data.research.push(study);
   await q("update decisions set data = $1, updated_at = now(), updated_by = $2 where firm_id = $3 and round = $4", [JSON.stringify(data), user.id, firmId, round]);
   await q("insert into change_log (firm_id, round, user_id, path, old_value, new_value) values ($1,$2,$3,'research',null,$4)", [firmId, round, user.id, JSON.stringify(study)]);
