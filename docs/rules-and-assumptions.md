@@ -76,7 +76,7 @@ Last updated Nov 27, 2026 (economics update built, waiting for merge). This is t
 - **Ad claims.** Up to 3 claims per product. True claims a segment cares about add 6% each. False claims add 3% now but hurt satisfaction.
 - **Campaigns and creative.** The campaign tone works better in some segments. Each rubric point above or below 3 on the creative grade moves ad effectiveness 5%.
 - **Satisfaction.** 40% fit, 25% price versus what buyers expected, 20% honesty of claims, 15% availability. Half carries over each round.
-- **AI rivals.** Always 8 firms. Difficulty runs from 3 in Practice and Round 1 to 7.5 in the Final round (3, 3, 3.5, 4.5, 5.5, 6.5, 7, 7.5; lowered from 4 on Nov 28 because level 4 enters two regions in Round 1 and beat sensible student teams by 25 to 40 points). Rivals design from the true buyer preferences with noise that shrinks as difficulty rises, adjust prices (up 4% after a sellout, down 6% with excess stock) and never buy research.
+- **AI rivals.** Always 8 firms. Difficulty runs from about 4 early to 7.5 in the Final round. Rivals design from the true buyer preferences with noise that shrinks as difficulty rises, adjust prices (up 4% after a sellout, down 6% with excess stock) and never buy research.
 
 ## 6. Scoring (each round)
 
